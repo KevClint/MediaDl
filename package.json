@@ -13,8 +13,8 @@
     "electron-builder": "^24.0.0"
   },
   "build": {
-    "appId": "com.yourname.ytdl",
-    "productName": "Video Downloader",
+    "appId": "com.yourname.mediadl",
+    "productName": "MediaDl",
     "directories": {
       "output": "dist"
     },
@@ -24,8 +24,19 @@
         {
           "target": "portable",
           "arch": ["x64"]
+        },
+        {
+          "target": "nsis",
+          "arch": ["x64"]
         }
       ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "MediaDl"
     },
     "files": [
       "**/*",
