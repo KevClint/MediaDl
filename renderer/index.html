@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" 
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>Video Downloader</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- Custom Title Bar -->
+  <div class="title-bar">
+    <div class="title-bar-left">
+      <span class="app-icon">⬇</span>
+      <span class="app-name">Video Downloader</span>
+    </div>
+    <div class="title-bar-buttons">
+      <button id="btn-min">─</button>
+      <button id="btn-max">□</button>
+      <button id="btn-close" class="close-btn">✕</button>
+    </div>
+  </div>
+
+  <div class="layout">
+
+    <!-- LEFT PANEL: Controls -->
+    <div class="left-panel">
+
+      <div class="field-group">
+        <label>Paste URLs <span class="muted">(one per line)</span></label>
+        <textarea id="url-input"
+          placeholder="https://youtube.com/watch?v=...&#10;https://tiktok.com/...&#10;https://facebook.com/..."
+          rows="6"></textarea>
+      </div>
+
+      <div class="field-group">
+        <label>Format</label>
+        <div class="toggle-group">
+          <label class="toggle-opt">
+            <input type="radio" name="fmt" value="mp4" checked />
+            <span>🎬 MP4 Video</span>
+          </label>
+          <label class="toggle-opt">
+            <input type="radio" name="fmt" value="mp3" />
+            <span>🎵 MP3 Audio</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="field-group" id="res-group">
+        <label>Resolution</label>
+        <select id="res-select">
+          <option value="2160">4K (2160p)</option>
+          <option value="1080">1080p Full HD</option>
+          <option value="720" selected>720p HD</option>
+          <option value="480">480p</option>
+          <option value="360">360p</option>
+          <option value="144">144p</option>
+        </select>
+        <small>Best available quality at or below selected resolution</small>
+      </div>
+
+      <div class="field-group">
+        <label>Save To</label>
+        <div class="folder-row">
+          <input type="text" id="folder-display" placeholder="No folder selected..." readonly />
+          <button id="btn-browse" class="btn-secondary">Browse</button>
+        </div>
+      </div>
+
+      <button id="btn-add" class="btn-primary">+ Add to Queue</button>
+
+    </div>
+
+    <!-- RIGHT PANEL: Queue -->
+    <div class="right-panel">
+
+      <div class="queue-header">
+        <h2>Download Queue</h2>
+        <div class="queue-actions">
+          <button id="btn-start-all" class="btn-primary small">▶ Start All</button>
+          <button id="btn-clear" class="btn-secondary small">✕ Clear Done</button>
+        </div>
+      </div>
+
+      <div id="queue">
+        <div class="empty-state" id="empty-state">
+          <div class="empty-icon">📥</div>
+          <p>No downloads yet</p>
+          <p class="muted">Paste a URL and click Add to Queue</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
