@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" 
-        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
-  <title>Video Downloader</title>
+        content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'">
+  <title>MediaDl</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -13,7 +13,7 @@
   <div class="title-bar">
     <div class="title-bar-left">
       <span class="app-icon">⬇</span>
-      <span class="app-name">Video Downloader</span>
+      <span class="app-name">MediaDl</span>
     </div>
     <div class="title-bar-buttons">
       <button id="btn-min">─</button>
