@@ -9,7 +9,7 @@
     "build": "electron-builder --win --x64"
   },
   "devDependencies": {
-    "electron": "^28.0.0",
+    "electron": "^35.7.5",
     "electron-builder": "^24.0.0"
   },
   "build": {
