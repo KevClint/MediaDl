@@ -10,7 +10,7 @@
 
 ## 📥 Download
 
-👉 **[Click here to download the latest v2.0.0 release](https://github.com/kevclint/MediaDl/releases/latest)**
+👉 **[Click here to download the latest release](https://github.com/kevclint/MediaDl/releases/latest)**
 
 > **Portable & Lightweight:** No installation required. Just download the `.exe` and run it instantly.
 
