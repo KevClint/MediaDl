@@ -2,7 +2,7 @@
   "name": "mediadl",
   "version": "1.2.0",
   "description": "Multi-platform video and music downloader",
-  "author": "Your Name",
+  "author": "kevclint",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
