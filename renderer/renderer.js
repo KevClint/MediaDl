@@ -176,7 +176,7 @@ document.getElementById('btn-max').onclick = () => window.electronAPI.maximizeWi
 document.getElementById('btn-close').onclick = () => window.electronAPI.closeWindow();
 
 // ── Sidebar view switching ──
-const VIEW_IDS = ['view-home', 'view-downloads', 'view-settings'];
+const VIEW_IDS = ['view-home', 'view-downloads', 'view-settings', 'view-tools'];
 function switchView(viewId) {
   VIEW_IDS.forEach((id) => {
     const el = document.getElementById(id);
@@ -201,6 +201,127 @@ document.querySelectorAll('.sidebar-nav-item').forEach((btn) => {
     const view = btn.getAttribute('data-view');
     if (view) switchView('view-' + view);
   });
+});
+
+// ── Media Tools ──
+let toolsSelectedPath = '';
+let toolsLastOutputPath = '';
+
+const toolsDropZone = document.getElementById('tools-drop-zone');
+const toolsSelectedFileEl = document.getElementById('tools-selected-file');
+const toolsStatusBar = document.getElementById('tools-status-bar');
+const toolsStatusPercent = document.getElementById('tools-status-percent');
+const toolsProgressFill = document.getElementById('tools-progress-fill');
+const toolsStatusDone = document.getElementById('tools-status-done');
+const btnToolsShowFolder = document.getElementById('btn-tools-show-folder');
+
+function setToolsProcessing(processing) {
+  toolsStatusDone.hidden = true;
+  toolsStatusBar.hidden = !processing;
+  if (processing) {
+    toolsStatusPercent.textContent = '0%';
+    toolsProgressFill.style.width = '0%';
+  }
+}
+
+function setToolsProgress(percent) {
+  const p = Math.min(100, Math.max(0, Number(percent) || 0));
+  toolsStatusPercent.textContent = p + '%';
+  toolsProgressFill.style.width = p + '%';
+}
+
+function setToolsComplete(outputPath) {
+  toolsLastOutputPath = outputPath || '';
+  toolsStatusBar.hidden = true;
+  toolsStatusDone.hidden = false;
+  setToolsProgress(100);
+}
+
+window.electronAPI.onMediaToolsProgress((data) => {
+  setToolsProgress(data.percent);
+  if (data.percent >= 100 && data.outputPath) {
+    setToolsComplete(data.outputPath);
+  }
+});
+
+function toolsPickFile() {
+  return window.electronAPI.selectMediaFile().then((path) => {
+    if (path) {
+      toolsSelectedPath = path;
+      toolsSelectedFileEl.textContent = path.replace(/^.*[\\/]/, '');
+      toolsSelectedFileEl.classList.remove('muted');
+    }
+  });
+}
+
+toolsDropZone.addEventListener('click', () => void toolsPickFile());
+toolsDropZone.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    void toolsPickFile();
+  }
+});
+
+toolsDropZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  toolsDropZone.classList.add('drag-over');
+});
+
+toolsDropZone.addEventListener('dragleave', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  toolsDropZone.classList.remove('drag-over');
+});
+
+toolsDropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  toolsDropZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files && e.dataTransfer.files[0];
+  if (file && file.path) {
+    toolsSelectedPath = file.path;
+    toolsSelectedFileEl.textContent = file.name;
+    toolsSelectedFileEl.classList.remove('muted');
+  }
+});
+
+async function runTool(invoker, opts) {
+  if (!toolsSelectedPath) {
+    showToast('Select a file first (click drop zone or browse)', 'error');
+    return;
+  }
+  setToolsProcessing(true);
+  try {
+    const result = await invoker(opts);
+    if (result && result.success && result.outputPath) {
+      setToolsComplete(result.outputPath);
+      showToast('Processing complete', 'success');
+    }
+  } catch (err) {
+    setToolsProcessing(false);
+    showToast(err && err.message ? err.message : 'Processing failed', 'error');
+  }
+}
+
+document.getElementById('btn-tools-convert').addEventListener('click', () => {
+  const format = document.getElementById('tools-format').value;
+  runTool(window.electronAPI.mediaToolsConvert, { inputPath: toolsSelectedPath, format });
+});
+
+document.getElementById('btn-tools-compress').addEventListener('click', () => {
+  const quality = document.querySelector('input[name="tools-compress"]:checked').value;
+  runTool(window.electronAPI.mediaToolsCompress, { inputPath: toolsSelectedPath, quality });
+});
+
+document.getElementById('btn-tools-extract').addEventListener('click', () => {
+  runTool(window.electronAPI.mediaToolsExtractAudio, { inputPath: toolsSelectedPath });
+});
+
+btnToolsShowFolder.addEventListener('click', () => {
+  if (toolsLastOutputPath) {
+    window.electronAPI.showItemInFolder(toolsLastOutputPath);
+  }
 });
 
 // ── Downloads Manager ──

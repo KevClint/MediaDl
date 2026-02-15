@@ -54,6 +54,12 @@
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
         </svg>
       </button>
+      <button type="button" class="sidebar-nav-item" data-view="tools" aria-label="Media Tools" title="Media Tools">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" />
+          <line x1="20" y1="4" x2="8.12" y2="15.88" /><line x1="14.47" y1="14.48" x2="20" y2="20" />
+        </svg>
+      </button>
     </nav>
 
     <!-- Main content -->
@@ -184,6 +190,72 @@
               </div>
             </div>
           </form>
+        </section>
+      </div>
+
+      <!-- View: Media Tools -->
+      <div class="view view-hidden" id="view-tools">
+        <section class="tools-section">
+          <h2 class="tools-title">Media Tools</h2>
+          <div class="tools-drop-zone" id="tools-drop-zone" role="button" tabindex="0">
+            <span class="tools-drop-zone-text">Drop file here or Click to Browse</span>
+          </div>
+          <p class="tools-selected-file muted" id="tools-selected-file">No file selected</p>
+          <div class="tools-cards">
+            <div class="tool-card">
+              <h3 class="tool-card-title">Convert</h3>
+              <div class="tool-card-row">
+                <label for="tools-format">Format</label>
+                <select id="tools-format">
+                  <option value="mp4">MP4</option>
+                  <option value="mp3">MP3</option>
+                  <option value="mov">MOV</option>
+                  <option value="avi">AVI</option>
+                </select>
+                <button type="button" id="btn-tools-convert" class="btn-primary small">Convert</button>
+              </div>
+            </div>
+            <div class="tool-card">
+              <h3 class="tool-card-title">Compress</h3>
+              <div class="tool-card-row tool-card-toggle-row">
+                <label>Quality</label>
+                <div class="toggle-group">
+                  <label class="toggle-opt">
+                    <input type="radio" name="tools-compress" value="small" />
+                    <span>Small</span>
+                  </label>
+                  <label class="toggle-opt">
+                    <input type="radio" name="tools-compress" value="medium" checked />
+                    <span>Medium</span>
+                  </label>
+                  <label class="toggle-opt">
+                    <input type="radio" name="tools-compress" value="high" />
+                    <span>High</span>
+                  </label>
+                </div>
+                <button type="button" id="btn-tools-compress" class="btn-primary small">Compress</button>
+              </div>
+            </div>
+            <div class="tool-card">
+              <h3 class="tool-card-title">Extract Audio</h3>
+              <div class="tool-card-row">
+                <button type="button" id="btn-tools-extract" class="btn-primary small">Convert to MP3</button>
+              </div>
+            </div>
+          </div>
+          <div class="tools-status" id="tools-status">
+            <div class="tools-status-bar" id="tools-status-bar" hidden>
+              <div class="tools-status-label">Processing...</div>
+              <div class="tools-status-percent" id="tools-status-percent">0%</div>
+              <div class="progress-track tools-status-track">
+                <div class="progress-fill" id="tools-progress-fill" style="width: 0%"></div>
+              </div>
+            </div>
+            <div class="tools-status-done" id="tools-status-done" hidden>
+              <span class="tools-status-done-text">Done.</span>
+              <button type="button" id="btn-tools-show-folder" class="btn-secondary">Show in Folder</button>
+            </div>
+          </div>
         </section>
       </div>
     </main>

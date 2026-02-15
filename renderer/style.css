@@ -781,6 +781,153 @@ select:focus {
   max-width: 320px;
 }
 
+/* ── Media Tools View ────────────────────────────────────────────────────── */
+.tools-section {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-xl) var(--space-2xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+.tools-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 0;
+}
+
+.tools-drop-zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  border: 2px dashed var(--color-border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition), color var(--transition);
+}
+
+.tools-drop-zone:hover,
+.tools-drop-zone:focus {
+  border-color: var(--color-accent);
+  background: var(--color-surface-elevated);
+  color: var(--color-text);
+  outline: none;
+}
+
+.tools-drop-zone.drag-over {
+  border-color: var(--color-accent);
+  background: rgba(99, 102, 241, 0.08);
+  color: var(--color-accent);
+}
+
+.tools-selected-file {
+  font-size: 12px;
+  margin-top: calc(-1 * var(--space-md));
+}
+
+.tools-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  max-width: 480px;
+}
+
+.tool-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-lg);
+  transition: border-color var(--transition);
+}
+
+.tool-card:hover {
+  border-color: var(--color-border-subtle);
+}
+
+.tool-card-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-md);
+}
+
+.tool-card-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.tool-card-row label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  min-width: 56px;
+}
+
+.tool-card-toggle-row {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.tool-card-toggle-row .toggle-group {
+  margin: var(--space-xs) 0;
+}
+
+.tool-card-row .btn-primary.small {
+  margin-left: auto;
+}
+
+.tools-status {
+  margin-top: var(--space-md);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--color-border);
+  max-width: 480px;
+}
+
+.tools-status-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.tools-status-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.tools-status-percent {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-accent);
+}
+
+.tools-status-track {
+  height: 8px;
+}
+
+.tools-status-done {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.tools-status-done-text {
+  font-size: 13px;
+  color: var(--color-success);
+  font-weight: 500;
+}
+
 /* ── Toast Container ──────────────────────────────────────────────────────── */
 .toast-container {
   position: fixed;

@@ -441,6 +441,140 @@ ipcMain.handle('cancel-download', async (event, downloadId) => {
   }
 });
 
+// ── Media Tools (FFmpeg) ──
+const MEDIA_EXT = /\.(mp4|mp3|mov|avi|mkv|webm|wav|flac|m4a|aac|wma|ogg)$/i;
+
+function getFfmpegPath() {
+  return getToolPath('ffmpeg.exe');
+}
+
+function getFfprobePath() {
+  const base = path.join(isDev ? __dirname : process.resourcesPath, 'tools');
+  const exe = path.join(base, 'ffprobe.exe');
+  return fs.existsSync(exe) ? exe : null;
+}
+
+function getMediaDurationSeconds(inputPath) {
+  const ffprobe = getFfprobePath();
+  if (!ffprobe || typeof inputPath !== 'string' || !fs.existsSync(inputPath)) return null;
+  return new Promise((resolve) => {
+    const proc = spawn(ffprobe, [
+      '-v', 'error', '-show_entries', 'format=duration',
+      '-of', 'default=noprint_wrappers=1:nokey=1',
+      inputPath
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    let out = '';
+    proc.stdout.on('data', (d) => { out += d.toString(); });
+    proc.on('error', () => resolve(null));
+    proc.on('close', (code) => {
+      if (code !== 0) return resolve(null);
+      const num = parseFloat(out.trim());
+      resolve(Number.isFinite(num) ? num : null);
+    });
+  });
+}
+
+function parseFfmpegTime(stderrLine) {
+  const m = stderrLine.match(/time=(\d{2}):(\d{2}):(\d{2})\.(\d{2})/);
+  if (!m) return null;
+  const h = parseInt(m[1], 10), min = parseInt(m[2], 10), s = parseInt(m[3], 10), cs = parseInt(m[4], 10);
+  return h * 3600 + min * 60 + s + cs / 100;
+}
+
+function runFfmpegWithProgress(inputPath, outputPath, args, durationSeconds) {
+  return new Promise((resolve, reject) => {
+    const ffmpeg = getFfmpegPath();
+    if (!fs.existsSync(ffmpeg)) {
+      reject(new Error('FFmpeg not found.'));
+      return;
+    }
+    const fullArgs = ['-i', inputPath, '-y', ...args, outputPath];
+    const proc = spawn(ffmpeg, fullArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
+    let lastPercent = 0;
+    proc.stderr.on('data', (data) => {
+      const line = data.toString();
+      const t = parseFfmpegTime(line);
+      if (t != null && durationSeconds != null && durationSeconds > 0 && mainWindow) {
+        const p = Math.min(99, Math.round((t / durationSeconds) * 100));
+        if (p > lastPercent) {
+          lastPercent = p;
+          mainWindow.webContents.send('media-tools-progress', { percent: p });
+        }
+      }
+    });
+    proc.on('error', () => reject(new Error('Failed to start FFmpeg.')));
+    proc.on('close', (code) => {
+      if (mainWindow) mainWindow.webContents.send('media-tools-progress', { percent: 100, outputPath });
+      if (code === 0) resolve({ success: true, outputPath });
+      else reject(new Error('FFmpeg exited with code ' + code));
+    });
+  });
+}
+
+ipcMain.handle('select-media-file', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openFile'],
+    filters: [
+      { name: 'Media', extensions: ['mp4', 'mp3', 'mov', 'avi', 'mkv', 'webm', 'wav', 'flac', 'm4a', 'aac', 'wma', 'ogg'] },
+      { name: 'All Files', extensions: ['*'] }
+    ]
+  });
+  if (result.canceled || !result.filePaths.length) return null;
+  return result.filePaths[0];
+});
+
+ipcMain.handle('media-tools-convert', async (event, { inputPath, format }) => {
+  if (typeof inputPath !== 'string' || !fs.existsSync(inputPath) || !['mp4', 'mp3', 'mov', 'avi'].includes(format)) {
+    throw new Error('Invalid input or format.');
+  }
+  const dir = path.dirname(inputPath);
+  const base = path.basename(inputPath, path.extname(inputPath));
+  const outputPath = path.join(dir, base + '.' + format);
+  const duration = await getMediaDurationSeconds(inputPath);
+  if (format === 'mp3') {
+    return runFfmpegWithProgress(inputPath, outputPath, ['-vn', '-acodec', 'libmp3lame', '-q:a', '0'], duration);
+  }
+  if (format === 'mp4') {
+    return runFfmpegWithProgress(inputPath, outputPath, ['-c:v', 'libx264', '-c:a', 'aac', '-movflags', '+faststart'], duration);
+  }
+  if (format === 'mov') {
+    return runFfmpegWithProgress(inputPath, outputPath, ['-c:v', 'libx264', '-c:a', 'aac'], duration);
+  }
+  if (format === 'avi') {
+    return runFfmpegWithProgress(inputPath, outputPath, ['-c:v', 'mpeg4', '-c:a', 'mp3'], duration);
+  }
+  throw new Error('Unsupported format.');
+});
+
+ipcMain.handle('media-tools-compress', async (event, { inputPath, quality }) => {
+  if (typeof inputPath !== 'string' || !fs.existsSync(inputPath)) throw new Error('Invalid input.');
+  const crf = { small: 28, medium: 23, high: 18 }[quality] ?? 23;
+  const dir = path.dirname(inputPath);
+  const base = path.basename(inputPath, path.extname(inputPath));
+  const outputPath = path.join(dir, base + '_compressed.mp4');
+  const duration = await getMediaDurationSeconds(inputPath);
+  return runFfmpegWithProgress(inputPath, outputPath, ['-c:v', 'libx264', '-crf', String(crf), '-c:a', 'aac', '-movflags', '+faststart'], duration);
+});
+
+ipcMain.handle('media-tools-extract-audio', async (event, { inputPath }) => {
+  if (typeof inputPath !== 'string' || !fs.existsSync(inputPath)) throw new Error('Invalid input.');
+  const dir = path.dirname(inputPath);
+  const base = path.basename(inputPath, path.extname(inputPath));
+  const outputPath = path.join(dir, base + '.mp3');
+  const duration = await getMediaDurationSeconds(inputPath);
+  return runFfmpegWithProgress(inputPath, outputPath, ['-vn', '-acodec', 'libmp3lame', '-q:a', '0'], duration);
+});
+
+ipcMain.handle('show-item-in-folder', async (event, filePath) => {
+  if (typeof filePath !== 'string' || !filePath) return { success: false };
+  try {
+    shell.showItemInFolder(path.resolve(filePath));
+    return { success: true };
+  } catch {
+    return { success: false };
+  }
+});
+
 // ── Window controls ──
 ipcMain.on('window-minimize', () => mainWindow.minimize());
 ipcMain.on('window-maximize', () => {

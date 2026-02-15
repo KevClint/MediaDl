@@ -17,6 +17,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSettings: () => ipcRenderer.invoke('get-settings'),
   setSettings: (settings) => ipcRenderer.invoke('set-settings', settings),
   updateYtDlp: () => ipcRenderer.invoke('update-yt-dlp'),
+  selectMediaFile: () => ipcRenderer.invoke('select-media-file'),
+  mediaToolsConvert: (opts) => ipcRenderer.invoke('media-tools-convert', opts),
+  mediaToolsCompress: (opts) => ipcRenderer.invoke('media-tools-compress', opts),
+  mediaToolsExtractAudio: (opts) => ipcRenderer.invoke('media-tools-extract-audio', opts),
+  onMediaToolsProgress: (cb) => {
+    const listener = (_, data) => cb(data);
+    ipcRenderer.on('media-tools-progress', listener);
+    return () => ipcRenderer.removeListener('media-tools-progress', listener);
+  },
+  showItemInFolder: (filePath) => ipcRenderer.invoke('show-item-in-folder', filePath),
   minimizeWindow: () => ipcRenderer.send('window-minimize'),
   maximizeWindow: () => ipcRenderer.send('window-maximize'),
   closeWindow: () => ipcRenderer.send('window-close'),
