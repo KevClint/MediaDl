@@ -1,4 +1,4 @@
-# 🎬 MediaDl 2.0.0
+# 🎬 MediaDl 
 
 ![Version](https://img.shields.io/badge/version-2.0.0-6366f1)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey)
@@ -19,7 +19,7 @@
 ## ✨ Features
 
 ### 🚀 Powerful Downloading
-- **4K & 8K Support:** Download in the highest quality available (144p up to 8K).
+- **4K Support:** Download in the highest quality available (144p up to 4K).
 - **Smart Queue:** Add unlimited URLs and manage them in a clean, organized list.
 - **Batch Processing:** Paste multiple links at once to save time.
 - **Live Metrics:** Real-time tracking of file size, download speed, and ETA using monospaced fonts for zero UI jitter.
