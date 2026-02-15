@@ -54,6 +54,17 @@
           <line x1="20" y1="4" x2="8.12" y2="15.88" /><line x1="14.47" y1="14.48" x2="20" y2="20" />
         </svg>
       </button>
+      <div class="sidebar-about" aria-label="About">
+        <p class="sidebar-about-line">
+          Made with love
+          <span class="sidebar-about-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 21s-6.2-4.35-8.4-7.2A5.5 5.5 0 0 1 12 6.2a5.5 5.5 0 0 1 8.4 7.6C18.2 16.65 12 21 12 21z" />
+            </svg>
+          </span>
+          by Kevclint
+        </p>
+      </div>
     </nav>
 
     <!-- Main content -->
@@ -147,7 +158,10 @@
       <div class="view view-hidden" id="view-downloads">
         <section class="manager-section">
           <div class="content-wrap">
-            <h2 class="manager-title">Downloads</h2>
+            <div class="manager-header">
+              <h2 class="manager-title">Downloads</h2>
+              <p class="manager-subtitle">Review completed files and manage your download history.</p>
+            </div>
             <div id="downloads-list" class="downloads-list"></div>
             <div class="manager-empty" id="downloads-empty">
               <div class="empty-icon" aria-hidden="true">
@@ -231,7 +245,10 @@
       <div class="view view-hidden" id="view-tools">
         <section class="tools-section">
           <div class="content-wrap">
-            <h2 class="tools-title">Media Tools</h2>
+            <div class="tools-header">
+              <h2 class="tools-title">Media Tools</h2>
+              <p class="tools-subtitle">Convert, compress, and extract audio from local media files.</p>
+            </div>
             <div class="tools-empty-state" id="tools-empty-state">
               <div class="tools-drop-zone tools-drop-zone-hero" id="tools-drop-zone" role="button" tabindex="0">
                 <div class="empty-icon" aria-hidden="true">
