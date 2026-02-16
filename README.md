@@ -132,3 +132,5 @@ This tool is intended for **personal use only**. Only download content you have 
 If you find this useful, give it a **star** on GitHub! It helps others discover the project. 🙏
 
 [![Star on GitHub](https://img.shields.io/github/stars/kevclint/MediaDl?style=social)](https://github.com/kevclint/MediaDl/stargazers)
+
+[![Star History Chart](https://api.star-history.com/svg?repos=KevClint/MediaDl&type=date&legend=top-left)](https://www.star-history.com/#KevClint/MediaDl&type=date&legend=top-left)
