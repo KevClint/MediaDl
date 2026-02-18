@@ -207,7 +207,7 @@ body {
 
 /* ── Sidebar ────────────────────────────────────────────────────────────── */
 .sidebar {
-  width: var(--sidebar-width);
+  /* width: var(--sidebar-width); */
   background: var(--color-surface);
   border-right: 1px solid var(--color-border);
   display: flex;
@@ -247,14 +247,20 @@ body {
   height: 22px;
 }
 
-.sidebar-about {
+.sidebar-nav-item-settings {
   margin-top: auto;
+}
+
+.sidebar-about {
+  margin-top: 0;
   width: 100%;
-  padding: var(--space-2) 6px 10px;
+  padding: 10px 8px 12px;
   border-top: 1px solid var(--color-border);
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: 6px;
 }
 
 .sidebar-about-line {
@@ -277,10 +283,10 @@ body {
 }
 
 .sidebar-github {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: 12px;
   background: transparent;
   color: var(--color-text-muted);
   display: inline-flex;
@@ -298,10 +304,37 @@ body {
 }
 
 .sidebar-github svg {
-  width: 18px;
-  height: 18px;
+  width: 19px;
+  height: 19px;
   display: block;
   fill: currentColor;
+}
+
+.sidebar-about-text {
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+  width: 100%;
+}
+
+.sidebar-about-caption {
+  font-size: 8px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.sidebar-about-credit {
+  font-size: 8px;
+  line-height: 1.2;
+  color: var(--color-text-dim);
+  white-space: nowrap;
+  opacity: 0.95;
 }
 
 /* ── Main content (centered, max 1000px) ───────────────────────────────────── */
@@ -1796,7 +1829,7 @@ body {
 }
 
 .sidebar-nav-label {
-  font-size: 11px;
+  font-size: 8px;
   line-height: 1;
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -1823,6 +1856,14 @@ body {
   background: #eef2ff;
   border-color: #c7d2fe;
   color: #1f2937;
+}
+
+.sidebar-about-caption {
+  color: #64748b;
+}
+
+.sidebar-about-credit {
+  color: #94a3b8;
 }
 
 .command-section {
@@ -1866,7 +1907,7 @@ input[type="text"],
     --sidebar-width: 84px;
   }
   .sidebar-nav-label {
-    font-size: 10px;
+    font-size: 8px;
   }
 }
 
@@ -2241,6 +2282,14 @@ input[type="text"],
   background: #27272a;
   border-color: #52525b;
   color: #fafafa;
+}
+
+:root[data-theme="dark"] .sidebar-about-caption {
+  color: #a1a1aa;
+}
+
+:root[data-theme="dark"] .sidebar-about-credit {
+  color: #71717a;
 }
 
 :root[data-theme="dark"] .command-section {

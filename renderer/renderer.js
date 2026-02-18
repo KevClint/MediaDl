@@ -299,12 +299,28 @@ async function restoreState() {
 document.getElementById('btn-min').onclick = () => window.electronAPI.minimizeWindow();
 document.getElementById('btn-max').onclick = () => window.electronAPI.maximizeWindow();
 document.getElementById('btn-close').onclick = () => window.electronAPI.closeWindow();
-document.getElementById('btn-github').onclick = async () => {
-  const result = await window.electronAPI.openExternalUrl('https://github.com/KevClint/MediaDl');
-  if (!result || !result.success) {
+const btnGithub = document.getElementById('btn-github');
+if (btnGithub) {
+  btnGithub.addEventListener('click', async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const repoUrl = 'https://github.com/KevClint/MediaDl';
+    try {
+      if (window.electronAPI && typeof window.electronAPI.openExternalUrl === 'function') {
+        const result = await window.electronAPI.openExternalUrl(repoUrl);
+        if (result && result.success) return;
+      }
+    } catch (_) {}
+
+    try {
+      window.open(repoUrl, '_blank', 'noopener');
+      return;
+    } catch (_) {}
+
     showToast('Could not open GitHub link.', 'error');
-  }
-};
+  });
+}
 
 function updateCommandBarClearVisibility() {
   if (btnClear) btnClear.hidden = !urlInput.value.trim();
