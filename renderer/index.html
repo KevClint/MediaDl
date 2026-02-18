@@ -66,7 +66,13 @@
         </span>
         <span class="sidebar-nav-label">Settings</span>
       </button>
-      <div class="sidebar-about" aria-label="About">MediaDl</div>
+      <div class="sidebar-about" aria-label="About">
+        <button type="button" id="btn-github" class="sidebar-github" aria-label="Open MediaDl on GitHub" title="GitHub">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 2C6.48 2 2 6.58 2 12.23c0 4.52 2.87 8.35 6.84 9.7.5.1.68-.22.68-.49 0-.24-.01-.88-.01-1.73-2.78.62-3.37-1.37-3.37-1.37-.45-1.18-1.1-1.49-1.1-1.49-.9-.63.07-.62.07-.62 1 .07 1.53 1.05 1.53 1.05.88 1.56 2.32 1.11 2.88.85.09-.66.35-1.11.63-1.37-2.22-.26-4.56-1.14-4.56-5.1 0-1.13.39-2.05 1.03-2.77-.1-.27-.45-1.32.1-2.75 0 0 .84-.28 2.75 1.06A9.3 9.3 0 0 1 12 6.84c.85 0 1.71.12 2.51.35 1.91-1.34 2.75-1.06 2.75-1.06.55 1.43.2 2.48.1 2.75.64.72 1.03 1.64 1.03 2.77 0 3.97-2.34 4.83-4.57 5.08.36.32.68.95.68 1.92 0 1.39-.01 2.51-.01 2.85 0 .27.18.6.69.49A10.24 10.24 0 0 0 22 12.23C22 6.58 17.52 2 12 2z" />
+          </svg>
+        </button>
+      </div>
     </nav>
 
     <!-- Main content -->
@@ -76,6 +82,10 @@
         <section class="command-section">
           <div class="content-wrap">
           <div class="command-bar-wrapper">
+            <div class="command-bar-intro">
+              <h1 class="command-bar-title">MediaDl</h1>
+              <p class="command-bar-subtitle">Paste one or more links to add downloads quickly.</p>
+            </div>
             <div class="command-bar-container">
               <div class="command-bar" id="command-bar">
                 <button type="button" id="btn-paste" class="command-bar-paste" aria-label="Paste from clipboard" title="Paste">
@@ -97,7 +107,7 @@
             <p class="command-bar-error" id="url-error" role="alert" hidden></p>
           </div>
           <div class="options-row options-grid">
-            <div class="option-card">
+            <div class="option-card option-card-format">
               <label class="option-title">Format</label>
               <p class="option-subtitle">Choose download output type</p>
               <div class="toggle-group">
@@ -111,54 +121,78 @@
                 </label>
               </div>
             </div>
-            <div class="option-card" id="res-group">
-              <div class="option-title-row">
-                <label class="option-title" for="res-select">Resolution</label>
-                <div class="info-tip-wrap">
-                  <button type="button" class="info-tip-trigger" aria-label="Show MP4 resolution details">?</button>
-                  <div class="info-tip-popover" role="tooltip">
-                    <p><strong>2160p (4K)</strong><br/>Highest clarity, largest files, and longer processing time.</p>
-                    <p><strong>1080p Full HD</strong><br/>Best balance for large screens and quality-focused downloads.</p>
-                    <p><strong>720p HD</strong><br/>Good default for everyday viewing with smaller file sizes.</p>
-                    <p><strong>480p / 360p / 144p</strong><br/>Faster downloads and smaller files, lower visual quality.</p>
+            <div class="option-card option-card-quality">
+              <div id="res-group">
+                <div class="option-title-row">
+                  <label class="option-title" for="res-select">Resolution</label>
+                </div>
+                <p class="option-subtitle">Preferred quality for video mode</p>
+                <div class="quality-help-row">
+                  <div class="info-tip-wrap">
+                    <button type="button" class="info-tip-trigger" aria-label="Show resolution quality details">Resolution Guide</button>
+                    <div class="info-tip-popover" role="tooltip" hidden>
+                      <button type="button" class="info-tip-close" aria-label="Close guide">x</button>
+                      <p><strong>2160p (4K)</strong><br/>Highest clarity, largest files, and longer processing time.</p>
+                      <p><strong>1080p Full HD</strong><br/>Best balance for large screens and quality-focused downloads.</p>
+                      <p><strong>720p HD</strong><br/>Good default for everyday viewing with smaller file sizes.</p>
+                      <p><strong>480p / 360p / 144p</strong><br/>Faster downloads and smaller files, lower visual quality.</p>
+                    </div>
                   </div>
                 </div>
+                <select id="res-select">
+                  <option value="2160">4K (2160p)</option>
+                  <option value="1080">1080p Full HD</option>
+                  <option value="720" selected>720p HD</option>
+                  <option value="480">480p</option>
+                  <option value="360">360p</option>
+                  <option value="144">144p</option>
+                </select>
               </div>
-              <p class="option-subtitle">Preferred quality for video mode</p>
-              <select id="res-select">
-                <option value="2160">4K (2160p)</option>
-                <option value="1080">1080p Full HD</option>
-                <option value="720" selected>720p HD</option>
-                <option value="480">480p</option>
-                <option value="360">360p</option>
-                <option value="144">144p</option>
-              </select>
-            </div>
-            <div class="option-card" id="bitrate-group" hidden>
-              <div class="option-title-row">
-                <label class="option-title" for="mp3-bitrate-select">Quality Level</label>
-                <div class="info-tip-wrap">
-                  <button type="button" class="info-tip-trigger" aria-label="Show MP3 quality details">?</button>
-                  <div class="info-tip-popover" role="tooltip">
-                    <p><strong>Low 96 - 128 kbps</strong><br/>Noticeable "swishing" sounds; fine for talk radio or podcasts.</p>
-                    <p><strong>Standard 192 kbps</strong><br/>The old industry standard; decent for casual listening.</p>
-                    <p><strong>High 256 - 320 kbps</strong><br/>"Near-CD quality." Most people cannot tell the difference between 320kbps and the original source.</p>
+              <div id="bitrate-group" hidden>
+                <div class="option-title-row">
+                  <label class="option-title" for="mp3-bitrate-select">Quality Level</label>
+                </div>
+                <p class="option-subtitle">Bitrate target for MP3 conversion</p>
+                <div class="quality-help-row">
+                  <div class="info-tip-wrap">
+                    <button type="button" class="info-tip-trigger" aria-label="Show MP3 quality details">Quality Guide</button>
+                    <div class="info-tip-popover" role="tooltip" hidden>
+                      <button type="button" class="info-tip-close" aria-label="Close guide">x</button>
+                      <p><strong>Low 96 - 128 kbps</strong><br/>Smaller files, suitable for speech content.</p>
+                      <p><strong>Standard 192 kbps</strong><br/>Balanced quality and size for everyday listening.</p>
+                      <p><strong>High 256 - 320 kbps</strong><br/>Best quality, larger files.</p>
+                    </div>
                   </div>
                 </div>
+                <select id="mp3-bitrate-select">
+                  <option value="128">Low (96 - 128 kbps)</option>
+                  <option value="192" selected>Standard (192 kbps)</option>
+                  <option value="320">High (256 - 320 kbps)</option>
+                </select>
               </div>
-              <p class="option-subtitle">Bitrate target for MP3 conversion</p>
-              <select id="mp3-bitrate-select">
-                <option value="128">Low (96 - 128 kbps)</option>
-                <option value="192" selected>Standard (192 kbps)</option>
-                <option value="320">High (256 - 320 kbps)</option>
-              </select>
             </div>
-            <div class="option-card">
+            <div class="option-card option-card-save">
               <label class="option-title">Save to</label>
               <p class="option-subtitle">Set destination folder</p>
               <div class="folder-row">
                 <input type="text" id="folder-display" placeholder="No folder selected" readonly />
                 <button type="button" id="btn-browse" class="btn-secondary">Browse</button>
+              </div>
+            </div>
+            <div class="option-card">
+              <label class="option-title">Post-Download</label>
+              <p class="option-subtitle">Optional actions after download completes</p>
+              <div class="switch-list">
+                <label class="switch-row" for="opt-open-folder-finished">
+                  <span class="switch-row-text">Open folder when finished</span>
+                  <input type="checkbox" id="opt-open-folder-finished" class="switch-input" />
+                  <span class="switch-track" aria-hidden="true"></span>
+                </label>
+                <label class="switch-row" for="opt-download-subtitles">
+                  <span class="switch-row-text">Download subtitles</span>
+                  <input type="checkbox" id="opt-download-subtitles" class="switch-input" />
+                  <span class="switch-track" aria-hidden="true"></span>
+                </label>
               </div>
             </div>
           </div>
@@ -167,7 +201,10 @@
         <section class="queue-section">
           <div class="content-wrap">
             <div class="queue-header">
-              <h2>Download Queue</h2>
+              <div class="queue-title-group">
+                <h2>Download Queue</h2>
+                <p class="queue-subtitle">Track progress, retry failed jobs, and manage completed downloads.</p>
+              </div>
               <div class="queue-actions">
                 <button type="button" id="btn-start-all" class="btn-primary small">Start All</button>
                 <button type="button" id="btn-clear-done" class="btn-secondary">Clear Done</button>
@@ -251,6 +288,13 @@
                     <select id="settings-default-format">
                       <option value="mp4" selected>MP4</option>
                       <option value="mp3">MP3</option>
+                    </select>
+                  </div>
+                  <div class="settings-row">
+                    <label for="settings-theme">Theme</label>
+                    <select id="settings-theme">
+                      <option value="light" selected>Light</option>
+                      <option value="dark">Dark</option>
                     </select>
                   </div>
                 </div>

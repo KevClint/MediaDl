@@ -21,8 +21,11 @@ const resGroup = document.getElementById('res-group');
 const resSelect = document.getElementById('res-select');
 const bitrateGroup = document.getElementById('bitrate-group');
 const mp3BitrateSelect = document.getElementById('mp3-bitrate-select');
+const openFolderFinishedToggle = document.getElementById('opt-open-folder-finished');
+const downloadSubtitlesToggle = document.getElementById('opt-download-subtitles');
 const queueEl = document.getElementById('queue');
 const emptyState = document.getElementById('empty-state');
+const autoOpenedFolders = new Set();
 
 function getFormat() {
   return document.querySelector('input[name="fmt"]:checked').value;
@@ -44,8 +47,54 @@ document.querySelectorAll('input[name="fmt"]').forEach((radio) => {
   radio.addEventListener('change', syncFormatOptionVisibility);
 });
 
-function buildQueueKey(url, format, resolution, outputFolder, mp3Bitrate) {
-  return `${url}::${format}::${resolution || ''}::${mp3Bitrate || ''}::${outputFolder}`;
+function initInfoTipPopovers() {
+  const wraps = Array.from(document.querySelectorAll('.info-tip-wrap'));
+  if (wraps.length === 0) return;
+
+  const closeAll = () => {
+    wraps.forEach((wrap) => {
+      const popover = wrap.querySelector('.info-tip-popover');
+      if (popover) popover.hidden = true;
+    });
+  };
+
+  wraps.forEach((wrap) => {
+    const trigger = wrap.querySelector('.info-tip-trigger');
+    const popover = wrap.querySelector('.info-tip-popover');
+    const closeBtn = wrap.querySelector('.info-tip-close');
+    if (!trigger || !popover) return;
+
+    trigger.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const willOpen = popover.hidden;
+      closeAll();
+      popover.hidden = !willOpen;
+    });
+
+    if (closeBtn) {
+      closeBtn.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        popover.hidden = true;
+      });
+    }
+  });
+
+  document.addEventListener('click', (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (target.closest('.info-tip-wrap')) return;
+    closeAll();
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closeAll();
+  });
+}
+
+function buildQueueKey(url, format, resolution, outputFolder, mp3Bitrate, downloadSubtitles) {
+  return `${url}::${format}::${resolution || ''}::${mp3Bitrate || ''}::${outputFolder}::${downloadSubtitles ? 'subs' : 'nosubs'}`;
 }
 
 function getFormatLabel(job) {
@@ -163,6 +212,8 @@ function stateForStorage(job) {
     format: job.format,
     resolution: job.resolution,
     mp3Bitrate: job.mp3Bitrate || null,
+    openFolderWhenFinished: Boolean(job.openFolderWhenFinished),
+    downloadSubtitles: Boolean(job.downloadSubtitles),
     outputFolder: job.outputFolder,
     outputFilePath: job.outputFilePath || '',
     status: job.status,
@@ -193,6 +244,7 @@ async function restoreState() {
     folderDisplay.value = savedFolder;
   }
   const settings = await window.electronAPI.getSettings();
+  applyTheme(settings.theme);
   if (settings.defaultQuality) {
     resSelect.value = settings.defaultQuality;
   }
@@ -223,6 +275,8 @@ async function restoreState() {
         format: item.format,
         resolution: item.format === 'mp4' ? String(item.resolution || '720') : null,
         mp3Bitrate: item.format === 'mp3' ? String(item.mp3Bitrate || '192') : null,
+        openFolderWhenFinished: Boolean(item.openFolderWhenFinished),
+        downloadSubtitles: Boolean(item.downloadSubtitles),
         outputFolder: item.outputFolder,
         outputFilePath: item.outputFilePath || '',
         status: wasRunning ? 'queued' : (item.status || 'queued'),
@@ -245,6 +299,12 @@ async function restoreState() {
 document.getElementById('btn-min').onclick = () => window.electronAPI.minimizeWindow();
 document.getElementById('btn-max').onclick = () => window.electronAPI.maximizeWindow();
 document.getElementById('btn-close').onclick = () => window.electronAPI.closeWindow();
+document.getElementById('btn-github').onclick = async () => {
+  const result = await window.electronAPI.openExternalUrl('https://github.com/KevClint/MediaDl');
+  if (!result || !result.success) {
+    showToast('Could not open GitHub link.', 'error');
+  }
+};
 
 function updateCommandBarClearVisibility() {
   if (btnClear) btnClear.hidden = !urlInput.value.trim();
@@ -536,9 +596,11 @@ function renderDownloadsManager() {
   const completed = queue.filter((j) => j.status === 'completed');
   downloadsListEl.innerHTML = '';
   if (completed.length === 0) {
+    downloadsListEl.hidden = true;
     downloadsEmptyEl.hidden = false;
     return;
   }
+  downloadsListEl.hidden = false;
   downloadsEmptyEl.hidden = true;
   completed.forEach((job) => {
     const item = createNode('div', 'completed-item');
@@ -684,8 +746,18 @@ document.getElementById('btn-browse').onclick = async () => {
 const settingsFolderEl = document.getElementById('settings-folder');
 const settingsDefaultQualityEl = document.getElementById('settings-default-quality');
 const settingsDefaultFormatEl = document.getElementById('settings-default-format');
+const settingsThemeEl = document.getElementById('settings-theme');
 const appVersionEl = document.getElementById('app-version');
 const ytdlpVersionEl = document.getElementById('ytdlp-version');
+
+function applyTheme(theme) {
+  const nextTheme = theme === 'dark' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', nextTheme);
+}
+
+function getActiveTheme() {
+  return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+}
 
 async function loadAppVersion() {
   if (!appVersionEl) return '';
@@ -710,6 +782,12 @@ async function loadSettingsForm() {
   settingsFolderEl.value = s.downloadFolder || '';
   if (s.defaultQuality) settingsDefaultQualityEl.value = s.defaultQuality;
   if (s.defaultFormat) settingsDefaultFormatEl.value = s.defaultFormat;
+  const theme = (s.theme === 'dark' || s.theme === 'light') ? s.theme : getActiveTheme();
+  settingsThemeEl.value = theme;
+  applyTheme(theme);
+  if (s.theme !== 'dark' && s.theme !== 'light') {
+    await window.electronAPI.setSettings({ theme });
+  }
   await loadAppVersion();
   await loadYtDlpVersion();
 }
@@ -737,6 +815,12 @@ settingsDefaultFormatEl.addEventListener('change', async () => {
   const radio = document.querySelector(`input[name="fmt"][value="${val}"]`);
   if (radio) radio.checked = true;
   syncFormatOptionVisibility();
+});
+
+settingsThemeEl.addEventListener('change', async () => {
+  const val = settingsThemeEl.value === 'dark' ? 'dark' : 'light';
+  applyTheme(val);
+  await window.electronAPI.setSettings({ theme: val });
 });
 
 document.getElementById('btn-update-ytdlp').onclick = async () => {
@@ -808,15 +892,24 @@ document.getElementById('btn-add').onclick = () => {
   const format = getFormat();
   const resolution = format === 'mp4' ? resSelect.value : null;
   const mp3Bitrate = format === 'mp3' ? getMp3Bitrate() : null;
+  const openFolderWhenFinished = Boolean(openFolderFinishedToggle && openFolderFinishedToggle.checked);
+  const downloadSubtitles = Boolean(downloadSubtitlesToggle && downloadSubtitlesToggle.checked);
   const existingKeys = new Set(
-    queue.map((job) => buildQueueKey(job.url, job.format, job.resolution, job.outputFolder, job.mp3Bitrate))
+    queue.map((job) => buildQueueKey(
+      job.url,
+      job.format,
+      job.resolution,
+      job.outputFolder,
+      job.mp3Bitrate,
+      job.downloadSubtitles
+    ))
   );
   const pendingKeys = new Set();
   const newJobs = [];
 
   let duplicateCount = 0;
   valid.forEach((url) => {
-    const key = buildQueueKey(url, format, resolution, downloadFolder, mp3Bitrate);
+    const key = buildQueueKey(url, format, resolution, downloadFolder, mp3Bitrate, downloadSubtitles);
     if (existingKeys.has(key) || pendingKeys.has(key)) {
       duplicateCount += 1;
       return;
@@ -829,6 +922,8 @@ document.getElementById('btn-add').onclick = () => {
       format,
       resolution,
       mp3Bitrate,
+      openFolderWhenFinished,
+      downloadSubtitles,
       outputFolder: downloadFolder,
       status: 'queued',
       percent: 0,
@@ -911,6 +1006,8 @@ async function runDownload(job) {
       format: job.format,
       resolution: job.resolution,
       mp3Bitrate: job.mp3Bitrate || null,
+      openFolderWhenFinished: Boolean(job.openFolderWhenFinished),
+      downloadSubtitles: Boolean(job.downloadSubtitles),
       downloadId: job.id,
     });
   } catch (error) {
@@ -939,8 +1036,13 @@ window.electronAPI.onDownloadProgress((data) => {
 function updateJob(id, changes) {
   const job = queue.find((item) => item.id === id);
   if (!job) return;
+  const wasCompleted = job.status === 'completed';
 
   Object.assign(job, changes);
+  if (!wasCompleted && job.status === 'completed' && job.openFolderWhenFinished && !autoOpenedFolders.has(job.id)) {
+    autoOpenedFolders.add(job.id);
+    void window.electronAPI.openFolder(job.outputFolder);
+  }
   refreshCard(job);
   saveState();
 }
@@ -1203,5 +1305,6 @@ function friendlyError(message) {
 }
 
 void restoreState().finally(() => {
+  initInfoTipPopovers();
   saveState();
 });

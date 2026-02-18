@@ -30,6 +30,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('media-tools-progress', listener);
   },
   showItemInFolder: (filePath) => ipcRenderer.invoke('show-item-in-folder', filePath),
+  openExternalUrl: (url) => ipcRenderer.invoke('open-external-url', url),
   minimizeWindow: () => ipcRenderer.send('window-minimize'),
   maximizeWindow: () => ipcRenderer.send('window-maximize'),
   closeWindow: () => ipcRenderer.send('window-close'),

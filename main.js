@@ -85,7 +85,16 @@ function validateDownloadInput(payload) {
     throw new Error('Invalid download request.');
   }
 
-  const { url, outputFolder, format, resolution, mp3Bitrate, downloadId } = payload;
+  const {
+    url,
+    outputFolder,
+    format,
+    resolution,
+    mp3Bitrate,
+    openFolderWhenFinished,
+    downloadSubtitles,
+    downloadId
+  } = payload;
 
   if (!isSafeHttpUrl(url)) {
     throw new Error('Invalid URL. Only HTTP/HTTPS URLs are allowed.');
@@ -105,6 +114,12 @@ function validateDownloadInput(payload) {
   if (format === 'mp3' && !ALLOWED_MP3_BITRATES.has(String(mp3Bitrate || '192'))) {
     throw new Error('Invalid MP3 bitrate.');
   }
+  if (openFolderWhenFinished !== undefined && typeof openFolderWhenFinished !== 'boolean') {
+    throw new Error('Invalid open-folder option.');
+  }
+  if (downloadSubtitles !== undefined && typeof downloadSubtitles !== 'boolean') {
+    throw new Error('Invalid subtitle option.');
+  }
   if (!Number.isInteger(downloadId) || downloadId < 1) {
     throw new Error('Invalid download ID.');
   }
@@ -115,6 +130,8 @@ function validateDownloadInput(payload) {
     format,
     resolution: format === 'mp4' ? String(resolution) : null,
     mp3Bitrate: format === 'mp3' ? String(mp3Bitrate || '192') : null,
+    openFolderWhenFinished: Boolean(openFolderWhenFinished),
+    downloadSubtitles: Boolean(downloadSubtitles),
     downloadId
   };
 }
@@ -172,8 +189,8 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 950,
     height: 700,
-    minWidth: 900,
-    minHeight: 700,
+    minWidth: 880,
+    minHeight: 990,
     icon: path.join(__dirname, 'assets', 'icon.ico'), // ← add this line
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -287,11 +304,23 @@ ipcMain.handle('fetch-formats', async (event, url) => {
 });
 
 // ── Start download ──
-ipcMain.handle('start-download', async (event, { url, outputFolder, format, resolution, mp3Bitrate, downloadId }) => {
+ipcMain.handle('start-download', async (
+  event,
+  { url, outputFolder, format, resolution, mp3Bitrate, openFolderWhenFinished, downloadSubtitles, downloadId }
+) => {
   return new Promise((resolve, reject) => {
     let safeInput;
     try {
-      safeInput = validateDownloadInput({ url, outputFolder, format, resolution, mp3Bitrate, downloadId });
+      safeInput = validateDownloadInput({
+        url,
+        outputFolder,
+        format,
+        resolution,
+        mp3Bitrate,
+        openFolderWhenFinished,
+        downloadSubtitles,
+        downloadId
+      });
     } catch (error) {
       reject(error);
       return;
@@ -305,6 +334,7 @@ ipcMain.handle('start-download', async (event, { url, outputFolder, format, reso
       format: safeFormat,
       resolution: safeResolution,
       mp3Bitrate: safeMp3Bitrate,
+      downloadSubtitles: safeDownloadSubtitles,
       downloadId: safeDownloadId
     } = safeInput;
 
@@ -326,6 +356,13 @@ ipcMain.handle('start-download', async (event, { url, outputFolder, format, reso
       args = args.concat([
         '-f', `bestvideo${heightFilter}+bestaudio/best${heightFilter}/best`,
         '--merge-output-format', 'mp4'
+      ]);
+    }
+    if (safeDownloadSubtitles) {
+      args = args.concat([
+        '--write-subs',
+        '--write-auto-subs',
+        '--sub-langs', 'en.*'
       ]);
     }
 
@@ -452,6 +489,18 @@ ipcMain.handle('play-file', async (event, filePath) => {
   }
 });
 
+ipcMain.handle('open-external-url', async (event, rawUrl) => {
+  if (!isSafeHttpUrl(rawUrl)) {
+    return { success: false, message: 'Invalid URL.' };
+  }
+  try {
+    await shell.openExternal(rawUrl);
+    return { success: true };
+  } catch {
+    return { success: false, message: 'Could not open external URL.' };
+  }
+});
+
 ipcMain.handle('resolve-output-file', async (event, payload) => {
   try {
     if (!payload || typeof payload !== 'object') {
@@ -478,12 +527,16 @@ ipcMain.handle('get-settings', async () => {
 });
 
 ipcMain.handle('set-settings', async (event, settings) => {
+  if (!settings || typeof settings !== 'object') {
+    return { success: false, message: 'Invalid settings payload.' };
+  }
   const current = readSettings();
   if (settings.downloadFolder != null) current.downloadFolder = settings.downloadFolder;
   if (settings.defaultQuality != null) current.defaultQuality = settings.defaultQuality;
   if (settings.defaultFormat != null) current.defaultFormat = settings.defaultFormat;
-  writeSettings(current);
-  return { success: true };
+  if (settings.theme === 'light' || settings.theme === 'dark') current.theme = settings.theme;
+  const ok = writeSettings(current);
+  return ok ? { success: true } : { success: false, message: 'Could not save settings.' };
 });
 
 function getYtDlpVersion() {
