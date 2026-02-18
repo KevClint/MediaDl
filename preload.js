@@ -20,16 +20,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setSettings: (settings) => ipcRenderer.invoke('set-settings', settings),
   getYtDlpVersion: () => ipcRenderer.invoke('get-yt-dlp-version'),
   updateYtDlp: () => ipcRenderer.invoke('update-yt-dlp'),
-  selectMediaFile: () => ipcRenderer.invoke('select-media-file'),
-  mediaToolsConvert: (opts) => ipcRenderer.invoke('media-tools-convert', opts),
-  mediaToolsCompress: (opts) => ipcRenderer.invoke('media-tools-compress', opts),
-  mediaToolsExtractAudio: (opts) => ipcRenderer.invoke('media-tools-extract-audio', opts),
+  selectMediaFiles: () => ipcRenderer.invoke('select-media-files'),
+  mediaToolsRunPipeline: (opts) => ipcRenderer.invoke('media-tools-run-pipeline', opts),
   onMediaToolsProgress: (cb) => {
     const listener = (_, data) => cb(data);
     ipcRenderer.on('media-tools-progress', listener);
     return () => ipcRenderer.removeListener('media-tools-progress', listener);
   },
   showItemInFolder: (filePath) => ipcRenderer.invoke('show-item-in-folder', filePath),
+  openExternalUrl: (url) => ipcRenderer.invoke('open-external-url', url),
   minimizeWindow: () => ipcRenderer.send('window-minimize'),
   maximizeWindow: () => ipcRenderer.send('window-maximize'),
   closeWindow: () => ipcRenderer.send('window-close'),

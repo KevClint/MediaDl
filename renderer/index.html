@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'">
+        content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; object-src 'none'; base-uri 'self'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MediaDl</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -27,43 +27,56 @@
   </div>
 
   <div class="app-layout">
-    <!-- Sidebar: 64px, SVG icons -->
+    <!-- Sidebar: left panel navigation -->
     <nav class="sidebar" aria-label="Main navigation">
       <button type="button" class="sidebar-nav-item active" data-view="home" aria-label="Home" title="Home">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-          <polyline points="9 22 9 12 15 12 15 22" />
-        </svg>
+        <span class="sidebar-nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <polyline points="9 22 9 12 15 12 15 22" />
+          </svg>
+        </span>
+        <span class="sidebar-nav-label">Home</span>
       </button>
       <button type="button" class="sidebar-nav-item" data-view="downloads" aria-label="Downloads" title="Downloads">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-          <polyline points="7 10 12 15 17 10" />
-          <line x1="12" y1="15" x2="12" y2="3" />
-        </svg>
+        <span class="sidebar-nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+        </span>
+        <span class="sidebar-nav-label">Downloads</span>
       </button>
       <button type="button" class="sidebar-nav-item" data-view="tools" aria-label="Media Tools" title="Media Tools">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" />
-          <line x1="20" y1="4" x2="8.12" y2="15.88" /><line x1="14.47" y1="14.48" x2="20" y2="20" />
-        </svg>
+        <span class="sidebar-nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" />
+            <line x1="20" y1="4" x2="8.12" y2="15.88" /><line x1="14.47" y1="14.48" x2="20" y2="20" />
+          </svg>
+        </span>
+        <span class="sidebar-nav-label">Convert</span>
       </button>
-      <button type="button" class="sidebar-nav-item" data-view="settings" aria-label="Settings" title="Settings">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="3" />
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-        </svg>
+      <button type="button" class="sidebar-nav-item sidebar-nav-item-settings" data-view="settings" aria-label="Settings" title="Settings">
+        <span class="sidebar-nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </span>
+        <span class="sidebar-nav-label">Settings</span>
       </button>
       <div class="sidebar-about" aria-label="About">
-        <p class="sidebar-about-line">
-          Made with love
-          <span class="sidebar-about-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 21s-6.2-4.35-8.4-7.2A5.5 5.5 0 0 1 12 6.2a5.5 5.5 0 0 1 8.4 7.6C18.2 16.65 12 21 12 21z" />
-            </svg>
-          </span>
-          by Kevclint
-        </p>
+        <button type="button" id="btn-github" class="sidebar-github" aria-label="Open MediaDl on GitHub" title="GitHub">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 2C6.48 2 2 6.58 2 12.23c0 4.52 2.87 8.35 6.84 9.7.5.1.68-.22.68-.49 0-.24-.01-.88-.01-1.73-2.78.62-3.37-1.37-3.37-1.37-.45-1.18-1.1-1.49-1.1-1.49-.9-.63.07-.62.07-.62 1 .07 1.53 1.05 1.53 1.05.88 1.56 2.32 1.11 2.88.85.09-.66.35-1.11.63-1.37-2.22-.26-4.56-1.14-4.56-5.1 0-1.13.39-2.05 1.03-2.77-.1-.27-.45-1.32.1-2.75 0 0 .84-.28 2.75 1.06A9.3 9.3 0 0 1 12 6.84c.85 0 1.71.12 2.51.35 1.91-1.34 2.75-1.06 2.75-1.06.55 1.43.2 2.48.1 2.75.64.72 1.03 1.64 1.03 2.77 0 3.97-2.34 4.83-4.57 5.08.36.32.68.95.68 1.92 0 1.39-.01 2.51-.01 2.85 0 .27.18.6.69.49A10.24 10.24 0 0 0 22 12.23C22 6.58 17.52 2 12 2z" />
+          </svg>
+        </button>
+        <div class="sidebar-about-text">
+          <span class="sidebar-about-caption">Support This</span>
+          <span class="sidebar-about-caption">Repo</span>
+          <span class="sidebar-about-credit">By KevClint</span>
+        </div>
       </div>
     </nav>
 
@@ -74,6 +87,10 @@
         <section class="command-section">
           <div class="content-wrap">
           <div class="command-bar-wrapper">
+            <div class="command-bar-intro">
+              <h1 class="command-bar-title">MediaDl</h1>
+              <p class="command-bar-subtitle">Paste one or more links to add downloads quickly.</p>
+            </div>
             <div class="command-bar-container">
               <div class="command-bar" id="command-bar">
                 <button type="button" id="btn-paste" class="command-bar-paste" aria-label="Paste from clipboard" title="Paste">
@@ -94,9 +111,20 @@
             </div>
             <p class="command-bar-error" id="url-error" role="alert" hidden></p>
           </div>
-          <div class="options-row">
-            <div class="field-group">
-              <label>Format</label>
+          <div class="options-toolbar">
+            <button type="button" id="btn-toggle-options" class="options-toggle" aria-expanded="true" aria-controls="home-options-grid">
+              <span>Download Options</span>
+              <span class="options-toggle-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M6 9l6 6 6-6"></path>
+                </svg>
+              </span>
+            </button>
+          </div>
+          <div class="options-row options-grid" id="home-options-grid">
+            <div class="option-card option-card-format">
+              <label class="option-title">Format</label>
+              <p class="option-subtitle">Choose download output type</p>
               <div class="toggle-group">
                 <label class="toggle-opt">
                   <input type="radio" name="fmt" value="mp4" checked />
@@ -108,22 +136,78 @@
                 </label>
               </div>
             </div>
-            <div class="field-group" id="res-group">
-              <label for="res-select">Resolution</label>
-              <select id="res-select">
-                <option value="2160">4K (2160p)</option>
-                <option value="1080">1080p Full HD</option>
-                <option value="720" selected>720p HD</option>
-                <option value="480">480p</option>
-                <option value="360">360p</option>
-                <option value="144">144p</option>
-              </select>
+            <div class="option-card option-card-quality">
+              <div id="res-group">
+                <div class="option-title-row">
+                  <label class="option-title" for="res-select">Resolution</label>
+                </div>
+                <p class="option-subtitle">Preferred quality for video mode</p>
+                <div class="quality-help-row">
+                  <div class="info-tip-wrap">
+                    <button type="button" class="info-tip-trigger" aria-label="Show resolution quality details">Resolution Guide</button>
+                    <div class="info-tip-popover" role="tooltip" hidden>
+                      <button type="button" class="info-tip-close" aria-label="Close guide">x</button>
+                      <p><strong>2160p (4K)</strong><br/>Highest clarity, largest files, and longer processing time.</p>
+                      <p><strong>1080p Full HD</strong><br/>Best balance for large screens and quality-focused downloads.</p>
+                      <p><strong>720p HD</strong><br/>Good default for everyday viewing with smaller file sizes.</p>
+                      <p><strong>480p / 360p / 144p</strong><br/>Faster downloads and smaller files, lower visual quality.</p>
+                    </div>
+                  </div>
+                </div>
+                <select id="res-select">
+                  <option value="2160">4K (2160p)</option>
+                  <option value="1080">1080p Full HD</option>
+                  <option value="720" selected>720p HD</option>
+                  <option value="480">480p</option>
+                  <option value="360">360p</option>
+                  <option value="144">144p</option>
+                </select>
+              </div>
+              <div id="bitrate-group" hidden>
+                <div class="option-title-row">
+                  <label class="option-title" for="mp3-bitrate-select">Quality Level</label>
+                </div>
+                <p class="option-subtitle">Bitrate target for MP3 conversion</p>
+                <div class="quality-help-row">
+                  <div class="info-tip-wrap">
+                    <button type="button" class="info-tip-trigger" aria-label="Show MP3 quality details">Quality Guide</button>
+                    <div class="info-tip-popover" role="tooltip" hidden>
+                      <button type="button" class="info-tip-close" aria-label="Close guide">x</button>
+                      <p><strong>Low 96 - 128 kbps</strong><br/>Smaller files, suitable for speech content.</p>
+                      <p><strong>Standard 192 kbps</strong><br/>Balanced quality and size for everyday listening.</p>
+                      <p><strong>High 256 - 320 kbps</strong><br/>Best quality, larger files.</p>
+                    </div>
+                  </div>
+                </div>
+                <select id="mp3-bitrate-select">
+                  <option value="128">Low (96 - 128 kbps)</option>
+                  <option value="192" selected>Standard (192 kbps)</option>
+                  <option value="320">High (256 - 320 kbps)</option>
+                </select>
+              </div>
             </div>
-            <div class="field-group">
-              <label>Save to</label>
+            <div class="option-card option-card-save">
+              <label class="option-title">Save to</label>
+              <p class="option-subtitle">Set destination folder</p>
               <div class="folder-row">
                 <input type="text" id="folder-display" placeholder="No folder selected" readonly />
                 <button type="button" id="btn-browse" class="btn-secondary">Browse</button>
+              </div>
+            </div>
+            <div class="option-card">
+              <label class="option-title">Post-Download</label>
+              <p class="option-subtitle">Optional actions after download completes</p>
+              <div class="switch-list">
+                <label class="switch-row" for="opt-open-folder-finished">
+                  <span class="switch-row-text">Open folder when finished</span>
+                  <input type="checkbox" id="opt-open-folder-finished" class="switch-input" />
+                  <span class="switch-track" aria-hidden="true"></span>
+                </label>
+                <label class="switch-row" for="opt-download-subtitles">
+                  <span class="switch-row-text">Download subtitles</span>
+                  <input type="checkbox" id="opt-download-subtitles" class="switch-input" />
+                  <span class="switch-track" aria-hidden="true"></span>
+                </label>
               </div>
             </div>
           </div>
@@ -132,7 +216,10 @@
         <section class="queue-section">
           <div class="content-wrap">
             <div class="queue-header">
-              <h2>Download Queue</h2>
+              <div class="queue-title-group">
+                <h2>Download Queue</h2>
+                <p class="queue-subtitle">Track progress, retry failed jobs, and manage completed downloads.</p>
+              </div>
               <div class="queue-actions">
                 <button type="button" id="btn-start-all" class="btn-primary small">Start All</button>
                 <button type="button" id="btn-clear-done" class="btn-secondary">Clear Done</button>
@@ -218,6 +305,14 @@
                       <option value="mp3">MP3</option>
                     </select>
                   </div>
+                  <div class="settings-row">
+                    <label for="settings-theme">Theme</label>
+                    <select id="settings-theme">
+                      <option value="system" selected>System Default</option>
+                      <option value="light">Light</option>
+                      <option value="dark">Dark</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div class="settings-card settings-card-wide">
@@ -247,7 +342,7 @@
           <div class="content-wrap">
             <div class="tools-header">
               <h2 class="tools-title">Media Tools</h2>
-              <p class="tools-subtitle">Convert, compress, and extract audio from local media files.</p>
+              <p class="tools-subtitle">Build one pipeline and process one or many local media files in one run.</p>
             </div>
             <div class="tools-empty-state" id="tools-empty-state">
               <div class="tools-drop-zone tools-drop-zone-hero" id="tools-drop-zone" role="button" tabindex="0">
@@ -257,36 +352,60 @@
                     <line x1="20" y1="4" x2="8.12" y2="15.88" /><line x1="14.47" y1="14.48" x2="20" y2="20" />
                   </svg>
                 </div>
-                <p>Drop a file or click to browse</p>
-                <p class="empty-prompt">Paste a link to get started.</p>
+                <p>Drop files or click to browse</p>
+                <p class="empty-prompt">Select media files to start building your task pipeline.</p>
               </div>
             </div>
             <div class="tools-grid" id="tools-grid" hidden>
               <div class="tools-column-drop">
                 <div class="tools-drop-zone tools-drop-zone-compact" id="tools-drop-zone-grid" role="button" tabindex="0">
-                  <span class="tools-drop-zone-text">Drop file here or Click to Browse</span>
+                  <span class="tools-drop-zone-text">Drop files here or Click to Browse</span>
                 </div>
-                <p class="tools-selected-file muted" id="tools-selected-file">No file selected</p>
+                <p class="tools-selected-file muted" id="tools-selected-file">No files selected</p>
+                <div class="tool-card">
+                  <h3 class="tool-card-title">Output</h3>
+                  <div class="tool-card-row tool-output-row">
+                    <input type="text" id="tools-output-folder" readonly placeholder="Same folder as source files" />
+                    <button type="button" id="btn-tools-output-folder" class="btn-secondary">Browse</button>
+                  </div>
+                </div>
               </div>
               <div class="tools-column-settings">
                 <div class="tools-cards">
-                  <div class="tool-card">
-                    <h3 class="tool-card-title">Convert</h3>
+                  <div class="tool-card" id="tool-card-convert">
+                    <h3 class="tool-card-title">Task Builder</h3>
+                    <div class="switch-list" id="tools-row-convert-switch">
+                      <label class="switch-row" for="tools-enable-convert">
+                        <span class="switch-row-text">Convert video format</span>
+                        <input type="checkbox" id="tools-enable-convert" class="switch-input" checked />
+                        <span class="switch-track" aria-hidden="true"></span>
+                      </label>
+                    </div>
                     <div class="tool-card-row">
-                      <label for="tools-format">Format</label>
-                      <select id="tools-format">
+                      <label for="tools-convert-format">Format</label>
+                      <select id="tools-convert-format">
                         <option value="mp4">MP4</option>
-                        <option value="mp3">MP3</option>
                         <option value="mov">MOV</option>
                         <option value="avi">AVI</option>
+                        <option value="webm">WEBM</option>
                       </select>
-                      <button type="button" id="btn-tools-convert" class="btn-primary small">Convert</button>
+                      <label for="tools-resize-preset">Resize</label>
+                      <select id="tools-resize-preset">
+                        <option value="">Keep source</option>
+                        <option value="1080">1080p</option>
+                        <option value="720">720p</option>
+                        <option value="480">480p</option>
+                      </select>
                     </div>
                   </div>
-                  <div class="tool-card">
+                  <div class="tool-card" id="tool-card-compress">
                     <h3 class="tool-card-title">Compress</h3>
                     <div class="tool-card-row tool-card-toggle-row">
-                      <label>Quality</label>
+                      <label class="switch-row" for="tools-enable-compress">
+                        <span class="switch-row-text">Enable compression</span>
+                        <input type="checkbox" id="tools-enable-compress" class="switch-input" />
+                        <span class="switch-track" aria-hidden="true"></span>
+                      </label>
                       <div class="toggle-group">
                         <label class="toggle-opt">
                           <input type="radio" name="tools-compress" value="small" />
@@ -301,25 +420,68 @@
                           <span>High</span>
                         </label>
                       </div>
-                      <button type="button" id="btn-tools-compress" class="btn-primary small">Compress</button>
+                      <p class="tool-help-text">Small: 480p, CRF 28 | Medium: 720p, CRF 23 | High: 1080p, CRF 20</p>
                     </div>
                   </div>
-                  <div class="tool-card">
-                    <h3 class="tool-card-title">Extract Audio</h3>
-                    <div class="tool-card-row">
-                      <button type="button" id="btn-tools-extract" class="btn-primary small">Convert to MP3</button>
+                  <div class="tool-card" id="tool-card-audio">
+                    <h3 class="tool-card-title">Audio</h3>
+                    <div class="tool-card-row" id="tools-row-audio-extract">
+                      <label class="switch-row" for="tools-enable-extract-audio">
+                        <span class="switch-row-text">Extract audio</span>
+                        <input type="checkbox" id="tools-enable-extract-audio" class="switch-input" />
+                        <span class="switch-track" aria-hidden="true"></span>
+                      </label>
+                      <select id="tools-audio-format">
+                        <option value="mp3">MP3</option>
+                        <option value="wav">WAV</option>
+                        <option value="aac">AAC</option>
+                      </select>
+                    </div>
+                    <div class="tool-card-row" id="tools-row-audio-strip">
+                      <label class="switch-row" for="tools-strip-audio">
+                        <span class="switch-row-text">Strip audio from video</span>
+                        <input type="checkbox" id="tools-strip-audio" class="switch-input" />
+                        <span class="switch-track" aria-hidden="true"></span>
+                      </label>
                     </div>
                   </div>
+                  <div class="tool-card" id="tool-card-trim">
+                    <h3 class="tool-card-title">Trim Tool</h3>
+                    <div class="tool-card-row" id="tools-row-trim">
+                      <label class="switch-row" for="tools-enable-trim">
+                        <span class="switch-row-text">Trim clip</span>
+                        <input type="checkbox" id="tools-enable-trim" class="switch-input" />
+                        <span class="switch-track" aria-hidden="true"></span>
+                      </label>
+                      <input type="text" id="tools-trim-start" placeholder="Start (00:00:00)" />
+                      <input type="text" id="tools-trim-end" placeholder="End (00:00:10)" />
+                    </div>
+                  </div>
+                  <div class="tool-card" id="tool-card-gif">
+                    <h3 class="tool-card-title">GIF Tool</h3>
+                    <div class="tool-card-row" id="tools-row-gif">
+                      <label class="switch-row" for="tools-enable-gif">
+                        <span class="switch-row-text">Export GIF</span>
+                        <input type="checkbox" id="tools-enable-gif" class="switch-input" />
+                        <span class="switch-track" aria-hidden="true"></span>
+                      </label>
+                      <input type="text" id="tools-gif-duration" placeholder="Duration sec (10)" />
+                    </div>
+                  </div>
+                </div>
+                <div class="tools-primary-action">
+                  <button type="button" id="btn-tools-start" class="btn-primary">Start Processing</button>
                 </div>
               </div>
             </div>
             <div class="tools-status" id="tools-status" hidden>
               <div class="tools-status-bar" id="tools-status-bar">
-                <div class="tools-status-label">Processing...</div>
+                <div class="tools-status-label" id="tools-status-label">Processing...</div>
                 <div class="tools-status-percent" id="tools-status-percent">0%</div>
                 <div class="progress-track tools-status-track">
-                  <div class="progress-fill" id="tools-progress-fill" style="width: 0%"></div>
+                  <div class="progress-fill" id="tools-progress-fill"></div>
                 </div>
+                <div class="tools-status-extra" id="tools-status-extra">ETA: --</div>
               </div>
             </div>
             <div id="tools-success-container"></div>
@@ -331,6 +493,51 @@
 
   <!-- Toast container (fixed bottom center) -->
   <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+  <!-- Media Tools action prompt -->
+  <div class="tools-action-modal" id="tools-action-modal" hidden>
+    <div class="tools-action-backdrop" id="tools-action-backdrop"></div>
+    <div class="tools-action-dialog" role="dialog" aria-modal="true" aria-labelledby="tools-action-title">
+      <h3 id="tools-action-title">What do you want to do with these files?</h3>
+      <p class="tools-action-subtitle">Pick one or more tasks. You can still adjust details in Task Builder.</p>
+      <div class="tools-action-list">
+        <label class="switch-row" for="prompt-convert">
+          <span class="switch-row-text">Convert video format</span>
+          <input type="radio" name="prompt-feature" value="convert" id="prompt-convert" class="switch-input" checked />
+          <span class="switch-track" aria-hidden="true"></span>
+        </label>
+        <label class="switch-row" for="prompt-compress">
+          <span class="switch-row-text">Compress video</span>
+          <input type="radio" name="prompt-feature" value="compress" id="prompt-compress" class="switch-input" />
+          <span class="switch-track" aria-hidden="true"></span>
+        </label>
+        <label class="switch-row" for="prompt-extract">
+          <span class="switch-row-text">Audio tools</span>
+          <input type="radio" name="prompt-feature" value="audio" id="prompt-extract" class="switch-input" />
+          <span class="switch-track" aria-hidden="true"></span>
+        </label>
+        <label class="switch-row" for="prompt-trim">
+          <span class="switch-row-text">Trim clip</span>
+          <input type="radio" name="prompt-feature" value="trim" id="prompt-trim" class="switch-input" />
+          <span class="switch-track" aria-hidden="true"></span>
+        </label>
+        <label class="switch-row" for="prompt-gif">
+          <span class="switch-row-text">Export GIF</span>
+          <input type="radio" name="prompt-feature" value="gif" id="prompt-gif" class="switch-input" />
+          <span class="switch-track" aria-hidden="true"></span>
+        </label>
+        <label class="switch-row" for="prompt-resize">
+          <span class="switch-row-text">Resize resolution</span>
+          <input type="radio" name="prompt-feature" value="resize" id="prompt-resize" class="switch-input" />
+          <span class="switch-track" aria-hidden="true"></span>
+        </label>
+      </div>
+      <div class="tools-action-buttons">
+        <button type="button" id="btn-tools-prompt-skip" class="btn-secondary">Skip</button>
+        <button type="button" id="btn-tools-prompt-apply" class="btn-primary">Apply Selection</button>
+      </div>
+    </div>
+  </div>
 
   <script src="renderer.js"></script>
 </body>

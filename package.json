@@ -1,6 +1,6 @@
 {
   "name": "mediadl",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "Multi-platform video and music downloader",
   "author": "kevclint",
   "main": "main.js",
