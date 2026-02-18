@@ -19,21 +19,40 @@ const urlErrorEl = document.getElementById('url-error');
 const folderDisplay = document.getElementById('folder-display');
 const resGroup = document.getElementById('res-group');
 const resSelect = document.getElementById('res-select');
+const bitrateGroup = document.getElementById('bitrate-group');
+const mp3BitrateSelect = document.getElementById('mp3-bitrate-select');
 const queueEl = document.getElementById('queue');
 const emptyState = document.getElementById('empty-state');
-
-document.querySelectorAll('input[name="fmt"]').forEach((radio) => {
-  radio.addEventListener('change', () => {
-    resGroup.hidden = getFormat() === 'mp3';
-  });
-});
 
 function getFormat() {
   return document.querySelector('input[name="fmt"]:checked').value;
 }
 
-function buildQueueKey(url, format, resolution, outputFolder) {
-  return `${url}::${format}::${resolution || ''}::${outputFolder}`;
+function getMp3Bitrate() {
+  const raw = String(mp3BitrateSelect ? mp3BitrateSelect.value : '192');
+  if (raw === '128' || raw === '192' || raw === '320') return raw;
+  return '192';
+}
+
+function syncFormatOptionVisibility() {
+  const isMp3 = getFormat() === 'mp3';
+  resGroup.hidden = isMp3;
+  if (bitrateGroup) bitrateGroup.hidden = !isMp3;
+}
+
+document.querySelectorAll('input[name="fmt"]').forEach((radio) => {
+  radio.addEventListener('change', syncFormatOptionVisibility);
+});
+
+function buildQueueKey(url, format, resolution, outputFolder, mp3Bitrate) {
+  return `${url}::${format}::${resolution || ''}::${mp3Bitrate || ''}::${outputFolder}`;
+}
+
+function getFormatLabel(job) {
+  if (job.format === 'mp3') {
+    return `MP3 ${String(job.mp3Bitrate || '192')} kbps`;
+  }
+  return `MP4 ${job.resolution ? `${job.resolution}p` : ''}`.trim();
 }
 
 function statusLabel(status) {
@@ -143,6 +162,7 @@ function stateForStorage(job) {
     url: job.url,
     format: job.format,
     resolution: job.resolution,
+    mp3Bitrate: job.mp3Bitrate || null,
     outputFolder: job.outputFolder,
     outputFilePath: job.outputFilePath || '',
     status: job.status,
@@ -179,8 +199,8 @@ async function restoreState() {
   if (settings.defaultFormat) {
     const radio = document.querySelector(`input[name="fmt"][value="${settings.defaultFormat}"]`);
     if (radio) radio.checked = true;
-    resGroup.hidden = settings.defaultFormat === 'mp3';
   }
+  syncFormatOptionVisibility();
 
   const raw = localStorage.getItem(STATE_STORAGE_KEY);
   if (!raw) return;
@@ -202,6 +222,7 @@ async function restoreState() {
         url: item.url,
         format: item.format,
         resolution: item.format === 'mp4' ? String(item.resolution || '720') : null,
+        mp3Bitrate: item.format === 'mp3' ? String(item.mp3Bitrate || '192') : null,
         outputFolder: item.outputFolder,
         outputFilePath: item.outputFilePath || '',
         status: wasRunning ? 'queued' : (item.status || 'queued'),
@@ -715,7 +736,7 @@ settingsDefaultFormatEl.addEventListener('change', async () => {
   await window.electronAPI.setSettings({ defaultFormat: val });
   const radio = document.querySelector(`input[name="fmt"][value="${val}"]`);
   if (radio) radio.checked = true;
-  resGroup.hidden = val === 'mp3';
+  syncFormatOptionVisibility();
 });
 
 document.getElementById('btn-update-ytdlp').onclick = async () => {
@@ -786,15 +807,16 @@ document.getElementById('btn-add').onclick = () => {
 
   const format = getFormat();
   const resolution = format === 'mp4' ? resSelect.value : null;
+  const mp3Bitrate = format === 'mp3' ? getMp3Bitrate() : null;
   const existingKeys = new Set(
-    queue.map((job) => buildQueueKey(job.url, job.format, job.resolution, job.outputFolder))
+    queue.map((job) => buildQueueKey(job.url, job.format, job.resolution, job.outputFolder, job.mp3Bitrate))
   );
   const pendingKeys = new Set();
   const newJobs = [];
 
   let duplicateCount = 0;
   valid.forEach((url) => {
-    const key = buildQueueKey(url, format, resolution, downloadFolder);
+    const key = buildQueueKey(url, format, resolution, downloadFolder, mp3Bitrate);
     if (existingKeys.has(key) || pendingKeys.has(key)) {
       duplicateCount += 1;
       return;
@@ -806,6 +828,7 @@ document.getElementById('btn-add').onclick = () => {
       url,
       format,
       resolution,
+      mp3Bitrate,
       outputFolder: downloadFolder,
       status: 'queued',
       percent: 0,
@@ -887,6 +910,7 @@ async function runDownload(job) {
       outputFolder: job.outputFolder,
       format: job.format,
       resolution: job.resolution,
+      mp3Bitrate: job.mp3Bitrate || null,
       downloadId: job.id,
     });
   } catch (error) {
@@ -974,9 +998,7 @@ function createDownloadCard(data) {
   header.appendChild(titleGroup);
   header.appendChild(badge);
 
-  const formatText = job.format === 'mp3'
-    ? 'MP3'
-    : `MP4 ${job.resolution ? `${job.resolution}p` : ''}`.trim();
+  const formatText = getFormatLabel(job);
   const meta = createNode('div', 'card-meta');
   const formatSpan = createNode('span', '', formatText);
   const fileSizeSpan = createNode('span', 'mono', job.fileSize || '—');
@@ -1070,9 +1092,7 @@ function refreshCard(job) {
   refs.progressFill.style.width = `${percent}%`;
   refs.progressFill.classList.toggle('completed', job.status === 'completed' && percent >= 100);
 
-  const formatText = job.format === 'mp3'
-    ? 'MP3'
-    : `MP4 ${job.resolution ? `${job.resolution}p` : ''}`.trim();
+  const formatText = getFormatLabel(job);
   refs.formatSpan.textContent = formatText;
 
   const canCancel = job.status === 'queued' || RUNNING_STATUSES.has(job.status);

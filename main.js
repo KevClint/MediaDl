@@ -6,6 +6,7 @@ const { spawn } = require('child_process');
 const isDev = !app.isPackaged;
 const ALLOWED_FORMATS = new Set(['mp3', 'mp4']);
 const ALLOWED_RESOLUTIONS = new Set(['144', '360', '480', '720', '1080', '2160']);
+const ALLOWED_MP3_BITRATES = new Set(['128', '192', '320']);
 const runningDownloads = new Map();
 const SETTINGS_FILE = 'settings.json';
 
@@ -84,7 +85,7 @@ function validateDownloadInput(payload) {
     throw new Error('Invalid download request.');
   }
 
-  const { url, outputFolder, format, resolution, downloadId } = payload;
+  const { url, outputFolder, format, resolution, mp3Bitrate, downloadId } = payload;
 
   if (!isSafeHttpUrl(url)) {
     throw new Error('Invalid URL. Only HTTP/HTTPS URLs are allowed.');
@@ -98,6 +99,12 @@ function validateDownloadInput(payload) {
   if (format === 'mp3' && resolution !== null && resolution !== undefined) {
     throw new Error('Resolution is not allowed for MP3 downloads.');
   }
+  if (format === 'mp4' && mp3Bitrate !== null && mp3Bitrate !== undefined) {
+    throw new Error('MP3 bitrate is not allowed for MP4 downloads.');
+  }
+  if (format === 'mp3' && !ALLOWED_MP3_BITRATES.has(String(mp3Bitrate || '192'))) {
+    throw new Error('Invalid MP3 bitrate.');
+  }
   if (!Number.isInteger(downloadId) || downloadId < 1) {
     throw new Error('Invalid download ID.');
   }
@@ -107,6 +114,7 @@ function validateDownloadInput(payload) {
     outputFolder: validateFolder(outputFolder),
     format,
     resolution: format === 'mp4' ? String(resolution) : null,
+    mp3Bitrate: format === 'mp3' ? String(mp3Bitrate || '192') : null,
     downloadId
   };
 }
@@ -279,11 +287,11 @@ ipcMain.handle('fetch-formats', async (event, url) => {
 });
 
 // ── Start download ──
-ipcMain.handle('start-download', async (event, { url, outputFolder, format, resolution, downloadId }) => {
+ipcMain.handle('start-download', async (event, { url, outputFolder, format, resolution, mp3Bitrate, downloadId }) => {
   return new Promise((resolve, reject) => {
     let safeInput;
     try {
-      safeInput = validateDownloadInput({ url, outputFolder, format, resolution, downloadId });
+      safeInput = validateDownloadInput({ url, outputFolder, format, resolution, mp3Bitrate, downloadId });
     } catch (error) {
       reject(error);
       return;
@@ -291,7 +299,14 @@ ipcMain.handle('start-download', async (event, { url, outputFolder, format, reso
 
     const ytdlp = getToolPath('yt-dlp.exe');
     const ffmpegDir = path.dirname(getToolPath('ffmpeg.exe'));
-    const { url: safeUrl, outputFolder: safeOutputFolder, format: safeFormat, resolution: safeResolution, downloadId: safeDownloadId } = safeInput;
+    const {
+      url: safeUrl,
+      outputFolder: safeOutputFolder,
+      format: safeFormat,
+      resolution: safeResolution,
+      mp3Bitrate: safeMp3Bitrate,
+      downloadId: safeDownloadId
+    } = safeInput;
 
     let args = [
       '--ffmpeg-location', ffmpegDir,
@@ -304,7 +319,7 @@ ipcMain.handle('start-download', async (event, { url, outputFolder, format, reso
       args = args.concat([
         '-x',
         '--audio-format', 'mp3',
-        '--audio-quality', '0'
+        '--audio-quality', `${safeMp3Bitrate}K`
       ]);
     } else {
       const heightFilter = `[height<=${safeResolution}]`;

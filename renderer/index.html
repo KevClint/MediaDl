@@ -27,44 +27,46 @@
   </div>
 
   <div class="app-layout">
-    <!-- Sidebar: 64px, SVG icons -->
+    <!-- Sidebar: left panel navigation -->
     <nav class="sidebar" aria-label="Main navigation">
       <button type="button" class="sidebar-nav-item active" data-view="home" aria-label="Home" title="Home">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-          <polyline points="9 22 9 12 15 12 15 22" />
-        </svg>
+        <span class="sidebar-nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <polyline points="9 22 9 12 15 12 15 22" />
+          </svg>
+        </span>
+        <span class="sidebar-nav-label">Home</span>
       </button>
       <button type="button" class="sidebar-nav-item" data-view="downloads" aria-label="Downloads" title="Downloads">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-          <polyline points="7 10 12 15 17 10" />
-          <line x1="12" y1="15" x2="12" y2="3" />
-        </svg>
+        <span class="sidebar-nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+        </span>
+        <span class="sidebar-nav-label">Downloads</span>
       </button>
       <button type="button" class="sidebar-nav-item" data-view="tools" aria-label="Media Tools" title="Media Tools">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" />
-          <line x1="20" y1="4" x2="8.12" y2="15.88" /><line x1="14.47" y1="14.48" x2="20" y2="20" />
-        </svg>
+        <span class="sidebar-nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="6" cy="6" r="3" /><circle cx="6" cy="18" r="3" />
+            <line x1="20" y1="4" x2="8.12" y2="15.88" /><line x1="14.47" y1="14.48" x2="20" y2="20" />
+          </svg>
+        </span>
+        <span class="sidebar-nav-label">Convert</span>
       </button>
       <button type="button" class="sidebar-nav-item" data-view="settings" aria-label="Settings" title="Settings">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="3" />
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-        </svg>
+        <span class="sidebar-nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </span>
+        <span class="sidebar-nav-label">Settings</span>
       </button>
-      <div class="sidebar-about" aria-label="About">
-        <p class="sidebar-about-line">
-          Made with love
-          <span class="sidebar-about-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 21s-6.2-4.35-8.4-7.2A5.5 5.5 0 0 1 12 6.2a5.5 5.5 0 0 1 8.4 7.6C18.2 16.65 12 21 12 21z" />
-            </svg>
-          </span>
-          by Kevclint
-        </p>
-      </div>
+      <div class="sidebar-about" aria-label="About">MediaDl</div>
     </nav>
 
     <!-- Main content -->
@@ -94,9 +96,10 @@
             </div>
             <p class="command-bar-error" id="url-error" role="alert" hidden></p>
           </div>
-          <div class="options-row">
-            <div class="field-group">
-              <label>Format</label>
+          <div class="options-row options-grid">
+            <div class="option-card">
+              <label class="option-title">Format</label>
+              <p class="option-subtitle">Choose download output type</p>
               <div class="toggle-group">
                 <label class="toggle-opt">
                   <input type="radio" name="fmt" value="mp4" checked />
@@ -108,8 +111,20 @@
                 </label>
               </div>
             </div>
-            <div class="field-group" id="res-group">
-              <label for="res-select">Resolution</label>
+            <div class="option-card" id="res-group">
+              <div class="option-title-row">
+                <label class="option-title" for="res-select">Resolution</label>
+                <div class="info-tip-wrap">
+                  <button type="button" class="info-tip-trigger" aria-label="Show MP4 resolution details">?</button>
+                  <div class="info-tip-popover" role="tooltip">
+                    <p><strong>2160p (4K)</strong><br/>Highest clarity, largest files, and longer processing time.</p>
+                    <p><strong>1080p Full HD</strong><br/>Best balance for large screens and quality-focused downloads.</p>
+                    <p><strong>720p HD</strong><br/>Good default for everyday viewing with smaller file sizes.</p>
+                    <p><strong>480p / 360p / 144p</strong><br/>Faster downloads and smaller files, lower visual quality.</p>
+                  </div>
+                </div>
+              </div>
+              <p class="option-subtitle">Preferred quality for video mode</p>
               <select id="res-select">
                 <option value="2160">4K (2160p)</option>
                 <option value="1080">1080p Full HD</option>
@@ -119,8 +134,28 @@
                 <option value="144">144p</option>
               </select>
             </div>
-            <div class="field-group">
-              <label>Save to</label>
+            <div class="option-card" id="bitrate-group" hidden>
+              <div class="option-title-row">
+                <label class="option-title" for="mp3-bitrate-select">Quality Level</label>
+                <div class="info-tip-wrap">
+                  <button type="button" class="info-tip-trigger" aria-label="Show MP3 quality details">?</button>
+                  <div class="info-tip-popover" role="tooltip">
+                    <p><strong>Low 96 - 128 kbps</strong><br/>Noticeable "swishing" sounds; fine for talk radio or podcasts.</p>
+                    <p><strong>Standard 192 kbps</strong><br/>The old industry standard; decent for casual listening.</p>
+                    <p><strong>High 256 - 320 kbps</strong><br/>"Near-CD quality." Most people cannot tell the difference between 320kbps and the original source.</p>
+                  </div>
+                </div>
+              </div>
+              <p class="option-subtitle">Bitrate target for MP3 conversion</p>
+              <select id="mp3-bitrate-select">
+                <option value="128">Low (96 - 128 kbps)</option>
+                <option value="192" selected>Standard (192 kbps)</option>
+                <option value="320">High (256 - 320 kbps)</option>
+              </select>
+            </div>
+            <div class="option-card">
+              <label class="option-title">Save to</label>
+              <p class="option-subtitle">Set destination folder</p>
               <div class="folder-row">
                 <input type="text" id="folder-display" placeholder="No folder selected" readonly />
                 <button type="button" id="btn-browse" class="btn-secondary">Browse</button>
