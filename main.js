@@ -687,8 +687,10 @@ function runFfmpegWithProgress(inputPath, outputPath, args, durationSeconds) {
     const fullArgs = ['-i', inputPath, '-y', ...args, outputPath];
     const proc = spawn(ffmpeg, fullArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
     let lastPercent = 0;
+    let stderrAll = '';
     proc.stderr.on('data', (data) => {
       const line = data.toString();
+      stderrAll += line;
       const t = parseFfmpegTime(line);
       if (t != null && durationSeconds != null && durationSeconds > 0 && mainWindow) {
         const p = Math.min(99, Math.round((t / durationSeconds) * 100));
@@ -700,9 +702,14 @@ function runFfmpegWithProgress(inputPath, outputPath, args, durationSeconds) {
     });
     proc.on('error', () => reject(new Error('Failed to start FFmpeg.')));
     proc.on('close', (code) => {
-      if (mainWindow) mainWindow.webContents.send('media-tools-progress', { percent: 100, outputPath });
-      if (code === 0) resolve({ success: true, outputPath });
-      else reject(new Error('FFmpeg exited with code ' + code));
+      if (code === 0) {
+        if (mainWindow) mainWindow.webContents.send('media-tools-progress', { percent: 100, outputPath });
+        resolve({ success: true, outputPath });
+        return;
+      }
+      const trimmedErr = String(stderrAll || '').trim();
+      const details = trimmedErr ? `\n${trimmedErr.split(/\r?\n/).slice(-8).join('\n')}` : '';
+      reject(new Error(`FFmpeg exited with code ${code}${details}`));
     });
   });
 }
@@ -756,9 +763,19 @@ ipcMain.handle('media-tools-extract-audio', async (event, { inputPath }) => {
   if (typeof inputPath !== 'string' || !fs.existsSync(inputPath)) throw new Error('Invalid input.');
   const dir = path.dirname(inputPath);
   const base = path.basename(inputPath, path.extname(inputPath));
-  const outputPath = path.join(dir, base + '.mp3');
+  let outputPath = path.join(dir, base + '.mp3');
+  if (path.resolve(outputPath).toLowerCase() === path.resolve(inputPath).toLowerCase()) {
+    outputPath = path.join(dir, base + '_audio.mp3');
+  }
   const duration = await getMediaDurationSeconds(inputPath);
-  return runFfmpegWithProgress(inputPath, outputPath, ['-vn', '-acodec', 'libmp3lame', '-q:a', '0'], duration);
+  try {
+    return await runFfmpegWithProgress(inputPath, outputPath, ['-vn', '-acodec', 'libmp3lame', '-q:a', '2'], duration);
+  } catch (error) {
+    const msg = String(error && error.message ? error.message : '');
+    const canFallback = msg.includes('Unknown encoder') || msg.includes('Error selecting an encoder') || msg.includes('Invalid argument');
+    if (!canFallback) throw error;
+    return runFfmpegWithProgress(inputPath, outputPath, ['-vn', '-c:a', 'mp3', '-b:a', '192k'], duration);
+  }
 });
 
 ipcMain.handle('show-item-in-folder', async (event, filePath) => {
