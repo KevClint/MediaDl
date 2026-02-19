@@ -1,6 +1,6 @@
-<div align="center">
+﻿<div align="center">
 
-# 🎬 MediaDl
+# ðŸŽ¬ MediaDl
 
 [![Version](https://img.shields.io/badge/version-2.4.0-6366f1?style=for-the-badge)](https://github.com/kevclint/MediaDl/releases)
 [![Platform](https://img.shields.io/badge/platform-Windows-lightgrey?style=for-the-badge)](https://github.com/kevclint/MediaDl/releases)
@@ -10,7 +10,7 @@
 
 MediaDl provides a premium, "Linear-style" GUI for `yt-dlp` and `FFmpeg`. Download and process media from **YouTube, TikTok, Facebook, and 1000+ other sites** with a single click.
 
-[**📥 Download Latest Release**](https://github.com/kevclint/MediaDl/releases/latest)
+[**ðŸ“¥ Download Latest Release**](https://github.com/kevclint/MediaDl/releases/latest)
 
 *..Downloading Videos and Music Made Simple..*
 
@@ -18,28 +18,28 @@ MediaDl provides a premium, "Linear-style" GUI for `yt-dlp` and `FFmpeg`. Downlo
 
 ---
 
-## ✨ Key Features
+## âœ¨ Key Features
 
-### 📥 Effortless Downloading
+### ðŸ“¥ Effortless Downloading
 * **High Quality:** Supports everything from 144p to **4K**.
 * **Smart Queue:** Easily manage multiple downloads in one organized list.
 * **Batch Paste:** Add multiple links at once to save time.
 * **Live Stats:** Real-time tracking of speed, file size, and progress.
 
-### 🛠️ Built-in Media Tools
+### ðŸ› ï¸ Built-in Media Tools
 * **Fast Converter:** Switch between MP4, MP3, MKV, and AVI.
 * **Audio Extractor:** Quickly turn any video into a high-quality MP3.
 * **Drag & Drop:** Drop local files into the app to start processing instantly.
 * **Quick Actions:** Instant "Open Folder" and "Play" shortcuts once finished.
 
-### 🎨 Modern Design
+### ðŸŽ¨ Modern Design
 * **Clean Navigation:** Simple sidebar to switch between Home, Tools, and Settings.
 * **Smart Input:** A focused search bar that detects links from your clipboard.
 * **Sleek Layout:** A professional, easy-to-read interface designed for speed.
 
 ---
 
-## 📸 Interface
+## ðŸ“¸ Interface
 
 <table>
   <tr>
@@ -55,85 +55,107 @@ MediaDl provides a premium, "Linear-style" GUI for `yt-dlp` and `FFmpeg`. Downlo
 
 ---
 
-## 🌐 Supported Sites
+## ðŸŒ Supported Sites
 
 | Site | Video | Audio |
 |------|-------|-------|
-| YouTube | ✅ | ✅ |
-| TikTok | ✅ | ✅ |
-| Facebook | ✅ | ✅ |
-| Instagram | ✅ | ✅ |
-| Twitter / X | ✅ | ✅ |
-| 1000+ more | ✅ | ✅ |
+| YouTube | âœ… | âœ… |
+| TikTok | âœ… | âœ… |
+| Facebook | âœ… | âœ… |
+| Instagram | âœ… | âœ… |
+| Twitter / X | âœ… | âœ… |
+| 1000+ more | âœ… | âœ… |
 
 > Full list: [yt-dlp supported sites](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md)
 
 ---
 
-## 🛠️ Build From Source
+## 🛠️ Build From Source (Windows)
 
-### 1. Clone the repo
+### Prerequisites
 
-```bash
+- `git`
+- `Node.js` 18+ and `npm`
+- Rust stable toolchain (`rustup`)
+- Microsoft C++ Build Tools (Visual Studio Build Tools with Desktop C++ workload)
+- WebView2 Runtime (usually already installed on Windows 10/11)
+
+### 1. Clone the repository
+
+```powershell
 git clone https://github.com/kevclint/MediaDl.git
 cd MediaDl
 ```
 
-### 2. Install dependencies
+### 2. Install JavaScript dependencies
 
-```bash
+```powershell
 npm install
 ```
 
-### 3. Install Rust toolchain (required by Tauri)
+### 3. Install Rust toolchain
 
-```bash
+```powershell
 rustup toolchain install stable
+rustup default stable
 ```
 
-### 4. Download required tools
+### 4. Add required binaries to `tools/`
 
-Download these two files and place them inside the `tools/` folder:
+MediaDl expects these files:
 
-| File | Download | Size |
-|------|----------|------|
-| `yt-dlp.exe` | [⬇️ Download](https://github.com/yt-dlp/yt-dlp/releases/download/2026.02.04/yt-dlp.exe) | ~9 MB |
-| `ffmpeg.exe` | [⬇️ Download](https://sourceforge.net/projects/tumagcc/files/converters/ffmpeg.exe/download) | ~112 MB |
+- `tools/yt-dlp.exe`
+- `tools/ffmpeg.exe`
 
-Your `tools/` folder should look like this:
+Recommended sources:
 
-```
+- yt-dlp (official): https://github.com/yt-dlp/yt-dlp/releases/latest
+- FFmpeg (official builds page): https://ffmpeg.org/download.html
+
+Expected structure:
+
+```text
 MediaDl/
-└── tools/
-    ├── yt-dlp.exe   ✅
-    └── ffmpeg.exe   ✅
+`-- tools/
+    |-- yt-dlp.exe
+    `-- ffmpeg.exe
 ```
 
-### 5. Run the app
+### 5. Run in development mode
 
-```bash
-npm start
+```powershell
+npm run dev
 ```
 
-### 6. Build your own `.exe` (Tauri)
+### 6. Build installer/executable
 
 ```powershell
 npm run build
 ```
 
-Your `.exe` will appear in the `dist/` folder.
+Build artifacts are generated under:
+
+- `src-tauri/target/release/bundle/nsis/` (Windows installer)
+- `src-tauri/target/release/` (compiled binary)
+
+### Optional: quick tool checks
+
+```powershell
+.\tools\yt-dlp.exe --version
+.\tools\ffmpeg.exe -version
+```
 
 ---
 
-## 📦 Built With
+## ðŸ“¦ Built With
 
-- [Tauri 2.0](https://tauri.app) — Desktop app framework
-- [yt-dlp](https://github.com/yt-dlp/yt-dlp) — Video downloading engine
-- [FFmpeg](https://ffmpeg.org) — Audio/video conversion
+- [Tauri 2.0](https://tauri.app) â€” Desktop app framework
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp) â€” Video downloading engine
+- [FFmpeg](https://ffmpeg.org) â€” Audio/video conversion
 
 ---
 
-## ⚠️ Legal Notice
+## âš ï¸ Legal Notice
 
 -This tool is intended for **personal use only**. Only download content you have permission to download. Respect copyright laws in your country.
 -Check out the MIT license for more info...
@@ -142,13 +164,14 @@ Your `.exe` will appear in the `dist/` folder.
 
 <div align="center">
   
-⭐ Support
+â­ Support
 
-If you find this useful, give it a **star** on GitHub! It helps others discover the project. 🙏
+If you find this useful, give it a **star** on GitHub! It helps others discover the project. ðŸ™
 
 [![Star on GitHub](https://img.shields.io/github/stars/kevclint/MediaDl?style=social)](https://github.com/kevclint/MediaDl/stargazers)
 
 [![Star History Chart](https://api.star-history.com/svg?repos=KevClint/MediaDl&type=date&legend=top-left)](https://www.star-history.com/#KevClint/MediaDl&type=date&legend=top-left)
 
 </div>
+
 

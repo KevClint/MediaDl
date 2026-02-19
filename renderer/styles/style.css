@@ -180,13 +180,28 @@ body {
 .title-bar-buttons button {
   width: 32px;
   height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
-  font-size: 12px;
+  line-height: 1;
+  padding: 0;
   transition: background var(--transition), color var(--transition);
+}
+
+.title-bar-buttons button svg {
+  width: 11px;
+  height: 11px;
+  display: block;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .title-bar-buttons button:hover {
