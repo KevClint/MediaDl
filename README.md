@@ -107,6 +107,10 @@ MediaDl expects these files:
 - `tools/yt-dlp.exe`
 - `tools/ffmpeg.exe`
 
+Recommended for best YouTube compatibility on clean PCs (no Node/Deno installed):
+
+- `tools/node.exe` (optional but strongly recommended)
+
 Recommended sources:
 
 - yt-dlp (official): https://github.com/yt-dlp/yt-dlp/releases/latest
@@ -119,6 +123,7 @@ MediaDl/
 `-- tools/
     |-- yt-dlp.exe
     `-- ffmpeg.exe
+    `-- node.exe (optional)
 ```
 
 ### 5. Run in development mode
@@ -143,7 +148,15 @@ Build artifacts are generated under:
 ```powershell
 .\tools\yt-dlp.exe --version
 .\tools\ffmpeg.exe -version
+.\tools\node.exe --version
 ```
+
+### Troubleshooting installer builds
+
+- `yt-dlp.exe not found` or `ffmpeg.exe not found` on other devices:
+  Ensure both files exist in your local `tools/` folder *before* running `npm run build`, then rebuild the installer.
+- `No supported JavaScript runtime could be found`:
+  Add `node.exe` to `tools/` before building, or install Node.js on the target device.
 
 ---
 
