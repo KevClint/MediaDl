@@ -2,7 +2,7 @@
 
 # 🎬 MediaDl
 
-[![Version](https://img.shields.io/badge/version-2.4.0-6366f1?style=for-the-badge)](https://github.com/kevclint/MediaDl/releases)
+[![Version](https://img.shields.io/badge/version-2.4.1-6366f1?style=for-the-badge)](https://github.com/kevclint/MediaDl/releases)
 [![Platform](https://img.shields.io/badge/platform-Windows-lightgrey?style=for-the-badge)](https://github.com/kevclint/MediaDl/releases)
 [![License](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)](LICENSE)
 
