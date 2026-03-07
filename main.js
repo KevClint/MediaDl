@@ -4,6 +4,7 @@ const fs = require('fs');
 const { spawn } = require('child_process');
 
 const isDev = !app.isPackaged;
+const rendererUrl = process.env.ELECTRON_RENDERER_URL;
 const ALLOWED_FORMATS = new Set(['mp3', 'mp4']);
 const ALLOWED_RESOLUTIONS = new Set(['144', '360', '480', '720', '1080', '2160']);
 const ALLOWED_MP3_BITRATES = new Set(['128', '192', '320']);
@@ -259,7 +260,11 @@ function createWindow() {
     backgroundColor: '#09090b'
   });
 
-  mainWindow.loadFile('renderer/index.html');
+  if (rendererUrl) {
+    void mainWindow.loadURL(rendererUrl);
+  } else {
+    void mainWindow.loadFile(path.join(__dirname, 'dist', 'index.html'));
+  }
 
   mainWindow.webContents.setWindowOpenHandler(({ url: targetUrl }) => {
     if (typeof targetUrl === 'string' && (targetUrl.startsWith('http://') || targetUrl.startsWith('https://'))) {

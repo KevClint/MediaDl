@@ -76,8 +76,6 @@ MediaDl provides a premium, "Linear-style" GUI for `yt-dlp` and `FFmpeg`. Downlo
 
 - `git`
 - `Node.js` 18+ and `npm`
-- Rust stable toolchain (`rustup`)
-- Microsoft C++ Build Tools (Visual Studio Build Tools with Desktop C++ workload)
 - WebView2 Runtime (usually already installed on Windows 10/11)
 
 ### 1. Clone the repository
@@ -93,14 +91,7 @@ cd MediaDl
 npm install
 ```
 
-### 3. Install Rust toolchain
-
-```powershell
-rustup toolchain install stable
-rustup default stable
-```
-
-### 4. Add required binaries to `tools/`
+### 3. Add required binaries to `tools/`
 
 MediaDl expects these files:
 
@@ -126,13 +117,13 @@ MediaDl/
     `-- node.exe (optional)
 ```
 
-### 5. Run in development mode
+### 4. Run in development mode
 
 ```powershell
 npm run dev
 ```
 
-### 6. Build installer/executable
+### 5. Build installer/executable
 
 ```powershell
 npm run build
@@ -140,8 +131,7 @@ npm run build
 
 Build artifacts are generated under:
 
-- `src-tauri/target/release/bundle/nsis/` (Windows installer)
-- `src-tauri/target/release/` (compiled binary)
+- `release/` (Windows installer and unpacked app)
 
 ### Optional: quick tool checks
 
@@ -151,18 +141,16 @@ Build artifacts are generated under:
 .\tools\node.exe --version
 ```
 
-### Troubleshooting installer builds
+### Troubleshooting builds
 
 - `yt-dlp.exe not found` or `ffmpeg.exe not found` on other devices:
   Ensure both files exist in your local `tools/` folder *before* running `npm run build`, then rebuild the installer.
-- `No supported JavaScript runtime could be found`:
-  Add `node.exe` to `tools/` before building, or install Node.js on the target device.
 
 ---
 
 ## 📦 Built With
 
-- [Tauri 2.0](https://tauri.app) — Desktop app framework
+- [Electron](https://www.electronjs.org/) — Desktop app framework
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp) — Video downloading engine
 - [FFmpeg](https://ffmpeg.org) — Audio/video conversion
 

@@ -1,5 +1,10 @@
 node_modules/
 dist/
+release/
+tools/*.exe
+tools/*.zip
+tools/*.7z
+tools/*.gz
+tools/*.bz2
+tools/*.xz
 tools/
-md/
-src-tauri/

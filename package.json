@@ -1,23 +1,63 @@
 {
   "name": "mediadl",
-  "version": "2.4.1",
+  "version": "2.4.2",
   "description": "Multi-platform video and music downloader",
   "author": "kevclint",
   "type": "commonjs",
+  "main": "main.js",
   "scripts": {
     "frontend:dev": "vite --host 127.0.0.1 --port 1420 --strictPort",
     "frontend:build": "vite build",
-    "start": "tauri dev",
-    "dev": "tauri dev",
-    "build": "tauri build"
+    "start": "electron .",
+    "dev": "concurrently -k \"npm:frontend:dev\" \"npm:electron:dev\"",
+    "electron:dev": "wait-on tcp:127.0.0.1:1420 && cross-env ELECTRON_RENDERER_URL=http://127.0.0.1:1420 electron .",
+    "build": "npm run frontend:build && electron-builder --win nsis",
+    "pack": "npm run frontend:build && electron-builder --dir"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2",
     "@vitejs/plugin-react": "^5.1.4",
-    "vite": "^7.3.1"
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^37.4.0",
+    "electron-builder": "^26.0.12",
+    "vite": "^7.3.1",
+    "wait-on": "^8.0.5"
   },
   "dependencies": {
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
+  },
+  "build": {
+    "appId": "com.kevclint.mediadl",
+    "productName": "MediaDl",
+    "asar": true,
+    "directories": {
+      "buildResources": "assets",
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "main.js",
+      "preload.js",
+      "assets/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "tools",
+        "to": "tools",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }
