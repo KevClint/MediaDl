@@ -37,6 +37,13 @@ function readSettings() {
   }
 }
 
+function normalizeThemePreference(theme) {
+  if (theme === 'dark' || theme === 'light' || theme === 'system') {
+    return theme;
+  }
+  return 'system';
+}
+
 function writeSettings(settings) {
   try {
     fs.writeFileSync(getSettingsPath(), JSON.stringify(settings, null, 2), 'utf8');
@@ -208,6 +215,14 @@ function isWindowsPathArgumentError(message) {
     || (text.includes('invalid argument') && text.includes('stdout'));
 }
 
+function isPostprocessingHeaderArgumentError(message) {
+  const text = String(message || '').toLowerCase();
+  if (!text) return false;
+  return text.includes('postprocessing:')
+    && text.includes('could not write header for output file #0')
+    && text.includes('invalid argument');
+}
+
 function resolveOutputFilePath({ outputFolder, title, format }) {
   const resolvedFolder = validateFolder(outputFolder);
   const preferredExt = format === 'mp3' ? '.mp3' : '.mp4';
@@ -244,6 +259,8 @@ function resolveOutputFilePath({ outputFolder, title, format }) {
 }
 
 function createWindow() {
+  const initialThemePreference = normalizeThemePreference(readSettings().theme);
+
   mainWindow = new BrowserWindow({
     width: 850,
     height: 990,
@@ -252,12 +269,14 @@ function createWindow() {
     icon: path.join(__dirname, 'assets', 'icon.ico'), // ← add this line
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
+      additionalArguments: [`--theme-preference=${initialThemePreference}`],
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true
     },
     frame: false,
-    backgroundColor: '#09090b'
+    backgroundColor: '#09090b',
+    show: false
   });
 
   if (rendererUrl) {
@@ -279,6 +298,10 @@ function createWindow() {
         void shell.openExternal(targetUrl);
       }
     }
+  });
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
   });
 }
 
@@ -441,7 +464,11 @@ ipcMain.handle('start-download', async (
       downloadId: safeDownloadId
     } = safeInput;
 
-    const buildArgs = (useIdOnlyTemplate) => {
+    const buildArgs = (
+      useIdOnlyTemplate,
+      subtitlesEnabled = safeDownloadSubtitles,
+      forceRecodeMp4 = false
+    ) => {
       let outputStem = useIdOnlyTemplate
         ? String(safeDownloadId)
         : buildSafeTitleStem(safeTitle, safeDownloadId, 6, 48);
@@ -473,12 +500,19 @@ ipcMain.handle('start-download', async (
         ]);
       } else {
         const heightFilter = `[height<=${safeResolution}]`;
-        args = args.concat([
-          '-f', `bestvideo${heightFilter}+bestaudio/best${heightFilter}/best`,
-          '--merge-output-format', 'mp4'
-        ]);
+        if (forceRecodeMp4) {
+          args = args.concat([
+            '-f', `bestvideo${heightFilter}+bestaudio/best${heightFilter}/best`,
+            '--recode-video', 'mp4'
+          ]);
+        } else {
+          args = args.concat([
+            '-f', `bestvideo${heightFilter}+bestaudio/best${heightFilter}/best`,
+            '--merge-output-format', 'mp4'
+          ]);
+        }
       }
-      if (safeDownloadSubtitles) {
+      if (subtitlesEnabled) {
         args = args.concat([
           '--write-subs',
           '--write-auto-subs',
@@ -496,6 +530,10 @@ ipcMain.handle('start-download', async (
     }
     let settled = false;
     let attemptUsedIdOnlyTemplate = false;
+    let attemptUsedSubtitles = safeDownloadSubtitles;
+    let retriedWithoutSubtitles = false;
+    let retriedWithSimpleOutput = false;
+    let retriedWithMp4Recode = false;
 
     const settle = (fn, value) => {
       if (settled) return;
@@ -503,11 +541,16 @@ ipcMain.handle('start-download', async (
       runningDownloads.delete(safeDownloadId);
       fn(value);
     };
-    const runAttempt = (useIdOnlyTemplate) => {
+    const runAttempt = (
+      useIdOnlyTemplate,
+      subtitlesEnabled = safeDownloadSubtitles,
+      forceRecodeMp4 = false
+    ) => {
       if (settled) return;
       attemptUsedIdOnlyTemplate = useIdOnlyTemplate;
+      attemptUsedSubtitles = subtitlesEnabled;
 
-      const proc = spawn(ytdlp, buildArgs(useIdOnlyTemplate), {
+      const proc = spawn(ytdlp, buildArgs(useIdOnlyTemplate, subtitlesEnabled, forceRecodeMp4), {
         env: {
           ...process.env,
           PYTHONIOENCODING: 'utf-8'
@@ -625,6 +668,45 @@ ipcMain.handle('start-download', async (
             error: ''
           });
           runAttempt(true);
+          return;
+        }
+
+        if (!retriedWithoutSubtitles && attemptUsedSubtitles && isPostprocessingHeaderArgumentError(message)) {
+          retriedWithoutSubtitles = true;
+          mainWindow.webContents.send('download-progress', {
+            downloadId: safeDownloadId,
+            percent: 0,
+            fileSize: '',
+            status: 'processing',
+            error: 'Retrying without subtitles due to FFmpeg postprocessing error...'
+          });
+          runAttempt(true, false);
+          return;
+        }
+
+        if (!retriedWithSimpleOutput && isPostprocessingHeaderArgumentError(message)) {
+          retriedWithSimpleOutput = true;
+          mainWindow.webContents.send('download-progress', {
+            downloadId: safeDownloadId,
+            percent: 0,
+            fileSize: '',
+            status: 'processing',
+            error: 'Retrying with a simplified output path...'
+          });
+          runAttempt(true, false);
+          return;
+        }
+
+        if (!retriedWithMp4Recode && safeFormat === 'mp4' && isPostprocessingHeaderArgumentError(message)) {
+          retriedWithMp4Recode = true;
+          mainWindow.webContents.send('download-progress', {
+            downloadId: safeDownloadId,
+            percent: 0,
+            fileSize: '',
+            status: 'processing',
+            error: 'Retrying with MP4 recode for compatibility...'
+          });
+          runAttempt(true, false, true);
           return;
         }
 

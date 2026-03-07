@@ -90,6 +90,17 @@ function isRateLimitedError(rawMessage) {
     || text.includes('ratelimit');
 }
 
+function isYouTubeShortUrl(rawUrl) {
+  try {
+    const parsed = new URL(String(rawUrl || ''));
+    const host = parsed.hostname.toLowerCase();
+    return (host === 'youtube.com' || host === 'www.youtube.com' || host === 'm.youtube.com')
+      && parsed.pathname.startsWith('/shorts/');
+  } catch {
+    return false;
+  }
+}
+
 function clearRateLimitRetry(jobId) {
   const timers = rateLimitRetryTimers.get(jobId);
   if (!timers) return;
@@ -109,9 +120,13 @@ function scheduleRateLimitRetry(jobId, attemptNumber) {
   let remaining = seconds;
 
   const renderMessage = () => {
+    const job = queue.find((item) => item.id === jobId);
+    const retrySuffix = job && job.subtitlesDisabledDueToRateLimit
+      ? ' Retrying without subtitles.'
+      : '';
     updateJob(jobId, {
       status: 'failed',
-      error: `Rate limited by site (HTTP 429). Auto-retrying in ${remaining}s (attempt ${attemptNumber}/${MAX_RATE_LIMIT_RETRIES}).`,
+      error: `Rate limited by site (HTTP 429). Auto-retrying in ${remaining}s (attempt ${attemptNumber}/${MAX_RATE_LIMIT_RETRIES}).${retrySuffix}`,
     });
   };
 
@@ -1032,6 +1047,7 @@ const appVersionEl = document.getElementById('app-version');
 const ytdlpVersionEl = document.getElementById('ytdlp-version');
 const systemThemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
 let themePreference = 'system';
+const THEME_PREFERENCE_STORAGE_KEY = 'mediadl.themePreference';
 
 function normalizeThemePreference(theme) {
   if (theme === 'dark' || theme === 'light' || theme === 'system') return theme;
@@ -1046,6 +1062,7 @@ function resolveTheme(theme) {
 
 function applyTheme(theme) {
   themePreference = normalizeThemePreference(theme);
+  localStorage.setItem(THEME_PREFERENCE_STORAGE_KEY, themePreference);
   const resolved = resolveTheme(themePreference);
   document.documentElement.setAttribute('data-theme', resolved);
 }
@@ -1208,6 +1225,7 @@ document.getElementById('btn-add').onclick = () => {
   const newJobs = [];
 
   let duplicateCount = 0;
+  let warnedAboutShortsSubtitles = false;
   valid.forEach((url) => {
     const key = buildQueueKey(url, format, resolution, downloadFolder, mp3Bitrate, downloadSubtitles);
     if (existingKeys.has(key) || pendingKeys.has(key)) {
@@ -1230,8 +1248,13 @@ document.getElementById('btn-add').onclick = () => {
       fileSize: '',
       title: '',
       error: '',
+      subtitlesDisabledDueToRateLimit: false,
     };
     newJobs.push(job);
+
+    if (!warnedAboutShortsSubtitles && downloadSubtitles && isYouTubeShortUrl(url)) {
+      warnedAboutShortsSubtitles = true;
+    }
   });
 
   if (duplicateCount > 0) {
@@ -1241,6 +1264,10 @@ document.getElementById('btn-add').onclick = () => {
   if (newJobs.length > 0) {
     queue = [...newJobs, ...queue];
     rebuildQueue();
+  }
+
+  if (warnedAboutShortsSubtitles) {
+    showToast('YouTube Shorts often have no subtitles. If rate-limited, retries will continue without subtitles.', 'error');
   }
 
   urlInput.value = '';
@@ -1337,6 +1364,12 @@ async function runDownload(job) {
       ? error.message
       : String(error || '');
     if (isRateLimitedError(rawMessage)) {
+      if (job.downloadSubtitles && !job.subtitlesDisabledDueToRateLimit) {
+        updateJob(job.id, {
+          downloadSubtitles: false,
+          subtitlesDisabledDueToRateLimit: true,
+        });
+      }
       const attempt = (rateLimitRetryCounts.get(job.id) || 0) + 1;
       rateLimitRetryCounts.set(job.id, attempt);
       if (attempt <= MAX_RATE_LIMIT_RETRIES) {
@@ -1344,7 +1377,7 @@ async function runDownload(job) {
       } else {
         updateJob(job.id, {
           status: 'failed',
-          error: `Rate limited by site (HTTP 429). Retried ${MAX_RATE_LIMIT_RETRIES} times. Please wait a bit and try again.`,
+          error: `Rate limited by site (HTTP 429). Retried ${MAX_RATE_LIMIT_RETRIES} times. Please wait a bit and try again.${job.subtitlesDisabledDueToRateLimit ? ' Subtitles were disabled for retry attempts.' : ''}`,
         });
       }
       return;
@@ -1633,6 +1666,7 @@ void restoreState().finally(() => {
   initInfoTipPopovers();
   initSubtitleSupportHint();
   saveState();
+  document.documentElement.setAttribute('data-app-ready', 'true');
 });
 
 

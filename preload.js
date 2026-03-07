@@ -1,5 +1,14 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
+const themePreferenceArg = process.argv.find((arg) => arg.startsWith('--theme-preference='));
+const initialThemePreference = themePreferenceArg
+  ? themePreferenceArg.slice('--theme-preference='.length)
+  : 'system';
+
+contextBridge.exposeInMainWorld('bootstrapData', {
+  themePreference: initialThemePreference,
+});
+
 contextBridge.exposeInMainWorld('electronAPI', {
   getPlatform: () => ipcRenderer.invoke('get-platform'),
   selectFolder: () => ipcRenderer.invoke('select-folder'),

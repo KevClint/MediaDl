@@ -5,7 +5,42 @@
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' ws://localhost:1420 ws://127.0.0.1:1420 http://localhost:1420 http://127.0.0.1:1420 http://ipc.localhost https://ipc.localhost ipc:; object-src 'none'; base-uri 'self'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="dark light" />
   <title>MediaDl</title>
+  <script>
+    (() => {
+      const bootstrapTheme = window.bootstrapData && typeof window.bootstrapData.themePreference === "string"
+        ? window.bootstrapData.themePreference
+        : null;
+      const storedTheme = localStorage.getItem("mediadl.themePreference");
+      const candidate = bootstrapTheme || storedTheme;
+      const preference = candidate === "dark" || candidate === "light" || candidate === "system"
+        ? candidate
+        : "system";
+      const resolvedTheme = preference === "system"
+        ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+        : preference;
+      document.documentElement.setAttribute("data-theme", resolvedTheme);
+    })();
+  </script>
+  <style>
+    html {
+      background: #09090b;
+    }
+
+    html[data-theme="light"] {
+      background: #f3f4f6;
+    }
+
+    body {
+      background: transparent;
+      visibility: hidden;
+    }
+
+    html[data-app-ready="true"] body {
+      visibility: visible;
+    }
+  </style>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
