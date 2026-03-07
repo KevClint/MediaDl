@@ -1,6 +1,6 @@
 {
   "name": "mediadl",
-  "version": "2.4.2",
+  "version": "2.4.3",
   "description": "Multi-platform video and music downloader",
   "author": "kevclint",
   "type": "commonjs",
@@ -30,7 +30,7 @@
   "build": {
     "appId": "com.kevclint.mediadl",
     "productName": "MediaDl",
-    "asar": true,
+    "asar": false,
     "directories": {
       "buildResources": "assets",
       "output": "release"
@@ -52,7 +52,7 @@
       }
     ],
     "win": {
-      "target": "nsis",
+      "target": ["portable", "nsis"],
       "icon": "assets/icon.ico"
     },
     "nsis": {

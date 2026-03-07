@@ -1,4 +1,5 @@
 import {
+  buildFileTitle,
   compactTitle,
   createNode,
   detectSite,
@@ -81,6 +82,18 @@ const {
   syncFormatOptionVisibility,
   updateCommandBarClearVisibility,
 } = optionsController;
+
+window.addEventListener('error', (event) => {
+  const message = event && event.message ? event.message : 'Unknown renderer error';
+  console.error('[renderer error]', message, event?.error || '');
+  document.documentElement.setAttribute('data-app-ready', 'true');
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  const reason = event && 'reason' in event ? event.reason : 'Unknown promise rejection';
+  console.error('[renderer unhandled rejection]', reason);
+  document.documentElement.setAttribute('data-app-ready', 'true');
+});
 
 function isRateLimitedError(rawMessage) {
   const text = String(rawMessage || '').toLowerCase();
@@ -909,7 +922,8 @@ function renderDownloadsManager() {
     }
 
     const info = createNode('div', 'completed-item-info');
-    const title = createNode('div', 'completed-item-title', job.title || 'Unknown');
+    const title = createNode('div', 'completed-item-title', compactTitle(job.title || 'Unknown'));
+    title.title = job.title || 'Unknown';
     const meta = createNode('div', 'completed-item-meta', getCompletedMetaLine(job, site.name));
     info.appendChild(title);
     info.appendChild(meta);
@@ -1096,8 +1110,10 @@ async function loadSettingsForm() {
   if (s.theme !== 'dark' && s.theme !== 'light' && s.theme !== 'system') {
     await window.electronAPI.setSettings({ theme });
   }
-  await loadAppVersion();
-  await loadYtDlpVersion();
+  // Load versions in background (don't await)
+  void Promise.all([loadAppVersion(), loadYtDlpVersion()]).catch(() => {
+    // Silently fail version loading
+  });
 }
 
 document.getElementById('btn-settings-browse').onclick = async () => {
@@ -1334,13 +1350,13 @@ async function runDownload(job) {
     const MAX_PATH = platform === 'win32' ? 255 : 4096;
     const separator = platform === 'win32' ? '\\' : '/';
     const extension = job.format === 'mp3' ? '.mp3' : '.mp4';
-    let title = compactTitle(job.title || '');
+    let title = buildFileTitle(job.title || '') || String(job.id);
     let fullPath = job.outputFolder + separator + title + extension;
     let maxChars = 40;
 
     while (fullPath.length > MAX_PATH && maxChars > 10) {
       maxChars -= 5;
-      title = compactTitle(job.title || '', maxChars);
+      title = buildFileTitle(job.title || '', maxChars);
       fullPath = job.outputFolder + separator + title + extension;
     }
 
@@ -1449,6 +1465,7 @@ function createDownloadCard(data) {
   const header = createNode('div', 'card-header');
   const titleGroup = createNode('div', 'card-title-group');
   const titleEl = createNode('div', 'card-title', getCardTitle(job));
+  titleEl.title = job.title || '';
   const skeletonTitle = createNode('div', 'skeleton-line title');
   skeletonTitle.style.display = job.status === 'fetching' ? 'block' : 'none';
   const siteIconWrap = createNode('span', 'card-site-icon');
@@ -1554,6 +1571,7 @@ function refreshCard(job) {
   refs.badge.className = `badge badge-${job.status}`;
   refs.badge.textContent = statusLabel(job.status);
   refs.titleEl.textContent = getCardTitle(job);
+  refs.titleEl.title = job.title || '';
   refs.titleEl.style.display = isFetching ? 'none' : '';
   if (refs.skeletonTitle) refs.skeletonTitle.style.display = isFetching ? 'block' : 'none';
   refs.formatSpan.style.display = isFetching ? 'none' : '';
@@ -1661,12 +1679,20 @@ window.addEventListener('beforeunload', () => {
   clearAllRateLimitRetries();
 });
 
-void restoreState().finally(() => {
-  setOptionsCollapsed(isOptionsCollapsedStored(), false);
-  initInfoTipPopovers();
-  initSubtitleSupportHint();
-  saveState();
-  document.documentElement.setAttribute('data-app-ready', 'true');
-});
+// Show app immediately, load state in background
+document.documentElement.setAttribute('data-app-ready', 'true');
+
+void (async () => {
+  try {
+    await restoreState();
+  } catch (err) {
+    console.error('[restore-state]', err);
+  } finally {
+    setOptionsCollapsed(isOptionsCollapsedStored(), false);
+    initInfoTipPopovers();
+    initSubtitleSupportHint();
+    saveState();
+  }
+})();
 
 

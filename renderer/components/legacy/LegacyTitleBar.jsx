@@ -1,8 +1,10 @@
+import appIcon from "../../../assets/icon.ico";
+
 function LegacyTitleBar() {
   return (
     <div className="title-bar">
       <div className="title-bar-left">
-        <img src="/icon.ico" className="app-logo" alt="" aria-hidden="true" />
+        <img src={appIcon} className="app-logo" alt="" aria-hidden="true" />
         <span className="app-name">MediaDl</span>
       </div>
       <div className="title-bar-buttons">

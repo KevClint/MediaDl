@@ -1,3 +1,4 @@
+import "./bootstrap";
 import ReactDOM from "react-dom/client";
 
 import "./styles/style.css";

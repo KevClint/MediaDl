@@ -18,6 +18,17 @@ function getToolPath(toolName) {
   return path.join(process.resourcesPath, 'tools', toolName);
 }
 
+function ensureRequiredToolsPresent() {
+  const requiredTools = ['yt-dlp.exe', 'ffmpeg.exe'];
+  const missing = requiredTools.filter((toolName) => !fs.existsSync(getToolPath(toolName)));
+  if (missing.length === 0) return true;
+
+  const message = `Missing required tool files: ${missing.join(', ')}.\nExpected under: ${path.join(process.resourcesPath, 'tools')}`;
+  console.error('[electron] missing tools', { missing, expectedDir: path.join(process.resourcesPath, 'tools') });
+  dialog.showErrorBox('MediaDl Startup Error', message);
+  return false;
+}
+
 let mainWindow;
 
 function getSettingsPath() {
@@ -163,7 +174,7 @@ function normalizeName(value) {
     .trim();
 }
 
-function buildSafeTitleStem(rawTitle, id, maxWords = 6, maxChars = 48) {
+function buildSafeTitleStem(rawTitle, id, maxWords = 5, maxChars = 48) {
   const words = String(rawTitle || '')
     .replace(/[\r\n\t]+/g, ' ')
     .replace(/[<>:"/\\|?*\u0000-\u001F]/g, ' ')
@@ -173,15 +184,16 @@ function buildSafeTitleStem(rawTitle, id, maxWords = 6, maxChars = 48) {
     .filter(Boolean)
     .slice(0, maxWords);
 
-  const limited = words.join(' ').slice(0, maxChars).trim();
+  const limited = words.join('_').slice(0, maxChars).trim();
   const safe = limited
-    .replace(/[^A-Za-z0-9 _.-]+/g, ' ')
+    .replace(/[^A-Za-z0-9_.-]+/g, '_')
     .replace(/\.+$/g, '')
-    .replace(/\s+/g, ' ')
+    .replace(/_+/g, '_')
+    .replace(/^[_-]+|[_-]+$/g, '')
     .trim();
 
   if (!safe) return String(id);
-  return `${safe} [${id}]`;
+  return safe;
 }
 
 function extractYtDlpError(stderrText, stdoutText) {
@@ -303,6 +315,26 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
   });
+
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    console.error('[electron] render-process-gone', details);
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.show();
+    }
+  });
+
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
+    console.error('[electron] did-fail-load', { errorCode, errorDescription });
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.show();
+    }
+  });
+
+  mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+    if (level >= 2) {
+      console.error('[renderer console]', { message, line, sourceId });
+    }
+  });
 }
 
 function killProcessTree(proc) {
@@ -326,7 +358,13 @@ function killProcessTree(proc) {
   }
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  if (!ensureRequiredToolsPresent()) {
+    app.quit();
+    return;
+  }
+  createWindow();
+});
 
 ipcMain.handle('get-platform', () => process.platform);
 

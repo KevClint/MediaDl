@@ -1,11 +1,31 @@
-export function compactTitle(rawTitle, maxChars = 40) {
+export const DISPLAY_TITLE_MAX_CHARS = 12;
+export const FILE_TITLE_MAX_CHARS = 40;
+
+export function compactTitle(rawTitle, maxChars = DISPLAY_TITLE_MAX_CHARS) {
   const text = String(rawTitle || "").replace(/\s+/g, " ").trim();
   if (!text) return "";
   if (text.length <= maxChars) return text;
-  const slice = text.slice(0, maxChars + 1);
-  const cut = slice.lastIndexOf(" ");
-  const base = (cut > 24 ? slice.slice(0, cut) : text.slice(0, maxChars)).trim();
-  return `${base}...`;
+  return `${text.slice(0, Math.max(1, maxChars)).trim()}...`;
+}
+
+export function buildFileTitle(rawTitle, maxChars = FILE_TITLE_MAX_CHARS) {
+  const text = String(rawTitle || "")
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/[<>:\"/\\|?*\u0000-\u001F]/g, " ")
+    .replace(/[^\x20-\x7E]+/g, " ")
+    .trim();
+
+  if (!text) return "";
+
+  const underscored = text
+    .replace(/\s+/g, "_")
+    .replace(/[^A-Za-z0-9_.-]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/\.+$/g, "")
+    .replace(/^[_\-.]+|[_\-.]+$/g, "");
+
+  if (!underscored) return "";
+  return underscored.slice(0, maxChars).replace(/^[_\-.]+|[_\-.]+$/g, "");
 }
 
 export function statusLabel(status) {
