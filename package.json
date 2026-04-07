@@ -20,7 +20,7 @@
     "cross-env": "^10.1.0",
     "electron": "^37.4.0",
     "electron-builder": "^26.0.12",
-    "vite": "^7.3.1",
+    "vite": "^7.3.2",
     "wait-on": "^8.0.5"
   },
   "dependencies": {
