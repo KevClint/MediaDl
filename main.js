@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 
 const isDev = !app.isPackaged;
 const rendererUrl = process.env.ELECTRON_RENDERER_URL;
@@ -9,18 +9,35 @@ const ALLOWED_FORMATS = new Set(['mp3', 'mp4']);
 const ALLOWED_RESOLUTIONS = new Set(['144', '360', '480', '720', '1080', '2160']);
 const ALLOWED_MP3_BITRATES = new Set(['128', '192', '320']);
 const runningDownloads = new Map();
+const activeProcesses = new Set();
 const SETTINGS_FILE = 'settings.json';
 
 function getToolPath(toolName) {
   if (isDev) {
     return path.join(__dirname, 'tools', toolName);
   }
+  const asarUnpackedPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'tools', toolName);
+  if (fs.existsSync(asarUnpackedPath)) return asarUnpackedPath;
   return path.join(process.resourcesPath, 'tools', toolName);
 }
 
 function ensureRequiredToolsPresent() {
   const requiredTools = ['yt-dlp.exe', 'ffmpeg.exe'];
-  const missing = requiredTools.filter((toolName) => !fs.existsSync(getToolPath(toolName)));
+  const missing = [];
+  for (const toolName of requiredTools) {
+    const toolPath = getToolPath(toolName);
+    if (!fs.existsSync(toolPath)) {
+      missing.push(toolName);
+      continue;
+    }
+    try {
+      fs.accessSync(toolPath, fs.constants.F_OK | fs.constants.X_OK);
+    } catch {
+      if (process.platform !== 'win32') {
+        try { fs.chmodSync(toolPath, '755'); } catch { }
+      }
+    }
+  }
   if (missing.length === 0) return true;
 
   const message = `Missing required tool files: ${missing.join(', ')}.\nExpected under: ${path.join(process.resourcesPath, 'tools')}`;
@@ -67,11 +84,22 @@ function writeSettings(settings) {
 function isSafeHttpUrl(rawUrl) {
   if (typeof rawUrl !== 'string' || rawUrl.length > 2048) return false;
   try {
-    const parsed = new URL(rawUrl);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    const trimmed = rawUrl.trim();
+    if (!trimmed || /[\u0000-\u001F\u007F\s]/.test(trimmed)) return false;
+    const parsed = new URL(trimmed);
+    return (parsed.protocol === 'http:' || parsed.protocol === 'https:')
+      && !parsed.username
+      && !parsed.password;
   } catch {
     return false;
   }
+}
+
+function sanitizeHttpUrl(rawUrl) {
+  if (!isSafeHttpUrl(rawUrl)) {
+    throw new Error('Invalid URL. Only HTTP/HTTPS URLs are allowed.');
+  }
+  return new URL(rawUrl.trim()).toString();
 }
 
 function validateFolder(outputFolder) {
@@ -93,10 +121,98 @@ function validateFolder(outputFolder) {
   return resolvedFolder;
 }
 
-function validateFetchInput(url) {
-  if (!isSafeHttpUrl(url)) {
-    throw new Error('Invalid URL. Only HTTP/HTTPS URLs are allowed.');
+function resolveRealPathForComparison(targetPath, label = 'Path') {
+  const resolvedPath = path.resolve(targetPath);
+  if (!fs.existsSync(resolvedPath)) {
+    throw new Error(`${label} does not exist.`);
   }
+  try {
+    return fs.realpathSync.native(resolvedPath);
+  } catch {
+    return fs.realpathSync(resolvedPath);
+  }
+}
+
+function resolveComparableOutputPath(targetPath, label = 'Output path') {
+  if (typeof targetPath !== 'string' || targetPath.trim().length === 0) {
+    throw new Error(`${label} is required.`);
+  }
+
+  const resolvedPath = path.resolve(targetPath);
+  if (!path.isAbsolute(resolvedPath)) {
+    throw new Error(`${label} must be an absolute path.`);
+  }
+
+  const parentDir = path.dirname(resolvedPath);
+  if (!fs.existsSync(parentDir)) {
+    throw new Error(`${label} parent folder does not exist.`);
+  }
+  if (!fs.statSync(parentDir).isDirectory()) {
+    throw new Error(`${label} parent folder must be a directory.`);
+  }
+
+  const comparableParent = resolveRealPathForComparison(parentDir, `${label} parent folder`);
+  return path.join(comparableParent, path.basename(resolvedPath));
+}
+
+function normalizeComparablePath(targetPath) {
+  const resolvedPath = path.resolve(targetPath);
+  return process.platform === 'win32' ? resolvedPath.toLowerCase() : resolvedPath;
+}
+
+function isPathInside(parentPath, childPath) {
+  const normalizedParent = normalizeComparablePath(parentPath);
+  const normalizedChild = normalizeComparablePath(childPath);
+  const relative = path.relative(normalizedParent, normalizedChild);
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+}
+
+function getTrustedDownloadRoot() {
+  const savedFolder = readSettings().downloadFolder;
+  if (typeof savedFolder !== 'string' || savedFolder.trim().length === 0) {
+    throw new Error('Select a download folder first.');
+  }
+  return validateFolder(savedFolder);
+}
+
+function validateFolderWithinBase(candidateFolder, baseFolder, label = 'Output folder') {
+  const resolvedBase = validateFolder(baseFolder);
+  const comparableBase = resolveRealPathForComparison(resolvedBase, 'Selected download folder');
+  const resolvedCandidate = validateFolder(candidateFolder);
+  const comparableCandidate = resolveRealPathForComparison(resolvedCandidate, label);
+  if (!isPathInside(comparableBase, comparableCandidate)) {
+    throw new Error(`${label} must stay inside the selected download folder.`);
+  }
+  return resolvedCandidate;
+}
+
+function validatePathWithinBase(candidatePath, baseFolder, label = 'Path') {
+  if (typeof candidatePath !== 'string' || candidatePath.trim().length === 0) {
+    throw new Error(`${label} is required.`);
+  }
+  const resolvedBase = validateFolder(baseFolder);
+  const comparableBase = resolveRealPathForComparison(resolvedBase, 'Selected download folder');
+  const resolvedCandidate = path.resolve(candidatePath);
+  const comparableCandidate = resolveRealPathForComparison(resolvedCandidate, label);
+  if (!isPathInside(comparableBase, comparableCandidate)) {
+    throw new Error(`${label} must stay inside the selected download folder.`);
+  }
+  return resolvedCandidate;
+}
+
+function validateOutputPathWithinBase(candidatePath, baseFolder, label = 'Output path') {
+  const resolvedBase = validateFolder(baseFolder);
+  const comparableBase = resolveRealPathForComparison(resolvedBase, 'Selected download folder');
+  const resolvedCandidate = path.resolve(candidatePath);
+  const comparableCandidate = resolveComparableOutputPath(resolvedCandidate, label);
+  if (!isPathInside(comparableBase, comparableCandidate)) {
+    throw new Error(`${label} must stay inside the selected download folder.`);
+  }
+  return resolvedCandidate;
+}
+
+function validateFetchInput(url) {
+  return sanitizeHttpUrl(url);
 }
 
 function validateDownloadInput(payload) {
@@ -116,9 +232,6 @@ function validateDownloadInput(payload) {
     downloadId
   } = payload;
 
-  if (!isSafeHttpUrl(url)) {
-    throw new Error('Invalid URL. Only HTTP/HTTPS URLs are allowed.');
-  }
   if (!ALLOWED_FORMATS.has(format)) {
     throw new Error('Invalid format.');
   }
@@ -148,8 +261,8 @@ function validateDownloadInput(payload) {
   }
 
   return {
-    url,
-    outputFolder: validateFolder(outputFolder),
+    url: sanitizeHttpUrl(url),
+    outputFolder: validateFolderWithinBase(outputFolder, getTrustedDownloadRoot()),
     format,
     resolution: format === 'mp4' ? String(resolution) : null,
     mp3Bitrate: format === 'mp3' ? String(mp3Bitrate || '192') : null,
@@ -216,6 +329,12 @@ function extractYtDlpError(stderrText, stdoutText) {
     }
   }
 
+  const stderrLines = String(stderrText || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (stderrLines.length > 0) {
+    const msgs = stderrLines.slice(-2).join(' | ');
+    return `Download failed: ${msgs}`;
+  }
+
   return 'Download failed. Check the URL or your connection.';
 }
 
@@ -230,9 +349,13 @@ function isWindowsPathArgumentError(message) {
 function isPostprocessingHeaderArgumentError(message) {
   const text = String(message || '').toLowerCase();
   if (!text) return false;
-  return text.includes('postprocessing:')
-    && text.includes('could not write header for output file #0')
-    && text.includes('invalid argument');
+  // Catches the error whether it surfaces in stderr OR stdout tail
+  return (
+    text.includes('could not write header for output file') ||
+    (text.includes('postprocessing:') && text.includes('invalid argument')) ||
+    (text.includes('error') && text.includes('incorrect codec parameters')) ||
+    (text.includes('ffmpeg') && text.includes('invalid argument'))
+  );
 }
 
 function resolveOutputFilePath({ outputFolder, title, format }) {
@@ -270,6 +393,41 @@ function resolveOutputFilePath({ outputFolder, title, format }) {
   return media.length > 0 ? media[0].path : '';
 }
 
+function resolveGeneratedDownloadFile(outputFolder, stem, format) {
+  const resolvedFolder = validateFolder(outputFolder);
+  const normalizedStem = normalizeName(stem);
+  const preferredExt = format === 'mp3' ? '.mp3' : '.mp4';
+
+  const entries = fs.readdirSync(resolvedFolder, { withFileTypes: true });
+  const media = entries
+    .filter((entry) => entry.isFile() && /\.(mp4|mp3|webm|mkv|m4a)$/i.test(entry.name))
+    .map((entry) => {
+      const fullPath = path.join(resolvedFolder, entry.name);
+      const stat = fs.statSync(fullPath);
+      const ext = path.extname(entry.name).toLowerCase();
+      const base = path.basename(entry.name, ext);
+      const normalizedBase = normalizeName(base);
+      const exactStemScore = normalizedStem && normalizedBase === normalizedStem ? 3 : 0;
+      const prefixStemScore = !exactStemScore && normalizedStem && normalizedBase.startsWith(normalizedStem) ? 2 : 0;
+      const containsStemScore = !exactStemScore && !prefixStemScore && normalizedStem && normalizedBase.includes(normalizedStem) ? 1 : 0;
+      return {
+        path: fullPath,
+        mtime: stat.mtimeMs || 0,
+        stemScore: exactStemScore || prefixStemScore || containsStemScore,
+        extScore: ext === preferredExt ? 1 : 0,
+      };
+    })
+    .filter((item) => item.stemScore > 0);
+
+  media.sort((a, b) => {
+    if (b.stemScore !== a.stemScore) return b.stemScore - a.stemScore;
+    if (b.extScore !== a.extScore) return b.extScore - a.extScore;
+    return b.mtime - a.mtime;
+  });
+
+  return media.length > 0 ? media[0].path : '';
+}
+
 function createWindow() {
   const initialThemePreference = normalizeThemePreference(readSettings().theme);
 
@@ -284,7 +442,9 @@ function createWindow() {
       additionalArguments: [`--theme-preference=${initialThemePreference}`],
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true
+      sandbox: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false
     },
     frame: false,
     backgroundColor: '#09090b',
@@ -298,16 +458,20 @@ function createWindow() {
   }
 
   mainWindow.webContents.setWindowOpenHandler(({ url: targetUrl }) => {
-    if (typeof targetUrl === 'string' && (targetUrl.startsWith('http://') || targetUrl.startsWith('https://'))) {
-      void shell.openExternal(targetUrl);
+    try {
+      void shell.openExternal(sanitizeHttpUrl(targetUrl));
+    } catch {
+      // Ignore unsafe navigation attempts.
     }
     return { action: 'deny' };
   });
   mainWindow.webContents.on('will-navigate', (event, targetUrl) => {
     if (!targetUrl.startsWith('file://')) {
       event.preventDefault();
-      if (typeof targetUrl === 'string' && (targetUrl.startsWith('http://') || targetUrl.startsWith('https://'))) {
-        void shell.openExternal(targetUrl);
+      try {
+        void shell.openExternal(sanitizeHttpUrl(targetUrl));
+      } catch {
+        // Ignore unsafe navigation attempts.
       }
     }
   });
@@ -358,6 +522,24 @@ function killProcessTree(proc) {
   }
 }
 
+function killProcessTreeSync(proc) {
+  if (!proc || typeof proc.pid !== 'number' || proc.pid <= 0) return;
+  if (process.platform === 'win32') {
+    spawnSync('taskkill', ['/PID', String(proc.pid), '/T', '/F'], { windowsHide: true });
+  } else {
+    try { proc.kill('SIGTERM'); } catch { }
+  }
+}
+
+function spawnTracked(command, args, options) {
+  const proc = spawn(command, args, options);
+  activeProcesses.add(proc);
+  proc.on('close', () => {
+    activeProcesses.delete(proc);
+  });
+  return proc;
+}
+
 app.whenReady().then(() => {
   if (!ensureRequiredToolsPresent()) {
     app.quit();
@@ -368,8 +550,22 @@ app.whenReady().then(() => {
 
 ipcMain.handle('get-platform', () => process.platform);
 
+function killAllProcesses() {
+  for (const proc of activeProcesses) {
+    killProcessTreeSync(proc);
+  }
+  for (const proc of runningDownloads.values()) {
+    killProcessTreeSync(proc);
+  }
+}
+
 app.on('window-all-closed', () => {
+  killAllProcesses();
   if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('before-quit', () => {
+  killAllProcesses();
 });
 
 // ── Select download folder ──
@@ -378,7 +574,12 @@ ipcMain.handle('select-folder', async () => {
     properties: ['openDirectory']
   });
   if (result.canceled) return null;
-  const folder = result.filePaths[0];
+  let folder;
+  try {
+    folder = validateFolder(result.filePaths[0]);
+  } catch {
+    return null;
+  }
   const settings = readSettings();
   settings.downloadFolder = folder;
   writeSettings(settings);
@@ -417,7 +618,7 @@ ipcMain.handle('set-download-folder', async (event, folderPath) => {
 ipcMain.handle('fetch-formats', async (event, url) => {
   return new Promise((resolve, reject) => {
     try {
-      validateFetchInput(url);
+      url = validateFetchInput(url);
     } catch (error) {
       reject(error);
       return;
@@ -425,12 +626,9 @@ ipcMain.handle('fetch-formats', async (event, url) => {
 
     const ytdlp = getToolPath('yt-dlp.exe');
 
-    const proc = spawn(ytdlp, [
+    const proc = spawnTracked(ytdlp, [
       '--dump-json',
       '--no-playlist',
-      '--windows-filenames',
-      '--trim-filenames', '180',
-      '--encoding', 'utf-8',
       url
     ], {
       env: {
@@ -441,12 +639,44 @@ ipcMain.handle('fetch-formats', async (event, url) => {
 
     let output = '';
     let errorOutput = '';
+    let settled = false;
 
-    proc.stdout.on('data', (data) => { output += data.toString(); });
-    proc.stderr.on('data', (data) => { errorOutput += data.toString(); });
-    proc.on('error', () => reject(new Error('Failed to start yt-dlp process')));
+    const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      killProcessTreeSync(proc);
+      reject(new Error('Fetch formats timed out after 60 seconds'));
+    }, 60 * 1000);
+
+    const checkBuffer = () => {
+      if (output.length > 5 * 1024 * 1024) {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        killProcessTreeSync(proc);
+        reject(new Error('Output size exceeded 5MB limit. Please provide a single video URL.'));
+      }
+    };
+
+    proc.stdout.on('data', (data) => {
+      if (settled) return;
+      output += data.toString();
+      checkBuffer();
+    });
+    proc.stderr.on('data', (data) => {
+      if (!settled) errorOutput += data.toString();
+    });
+    proc.on('error', () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      reject(new Error('Failed to start yt-dlp process'));
+    });
 
     proc.on('close', (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
       if (code !== 0) {
         reject(new Error(errorOutput || 'Failed to fetch video info'));
         return;
@@ -509,7 +739,7 @@ ipcMain.handle('start-download', async (
     ) => {
       let outputStem = useIdOnlyTemplate
         ? String(safeDownloadId)
-        : buildSafeTitleStem(safeTitle, safeDownloadId, 6, 48);
+        : buildSafeTitleStem(safeTitle, safeDownloadId, 6, 40);
       const reservedTail = '.%(ext)s';
       const maxPathLen = 230;
       const availableStemChars = Math.max(12, maxPathLen - safeOutputFolder.length - 1 - reservedTail.length);
@@ -517,16 +747,22 @@ ipcMain.handle('start-download', async (
         outputStem = outputStem.slice(0, availableStemChars).trim().replace(/[ .]+$/g, '');
       }
       if (!outputStem) outputStem = String(safeDownloadId);
-      const outputTemplate = path.join(safeOutputFolder, `${outputStem}${reservedTail}`);
+      const outputTemplate = validateOutputPathWithinBase(
+        path.join(safeOutputFolder, `${outputStem}${reservedTail}`),
+        getTrustedDownloadRoot(),
+        'Download output path'
+      );
 
       let args = [
         '--ffmpeg-location', ffmpegDir,
         '--newline',
         '--no-playlist',
-        '--windows-filenames',
+        '--retries', '5',
+        '--fragment-retries', '5',
+        '--extractor-retries', '3',
+        '--file-access-retries', '3',
         '--restrict-filenames',
-        '--trim-filenames', '180',
-        '--encoding', 'utf-8',
+        '--trim-filenames', '40',
         '-o', outputTemplate,
       ];
 
@@ -534,19 +770,30 @@ ipcMain.handle('start-download', async (
         args = args.concat([
           '-x',
           '--audio-format', 'mp3',
-          '--audio-quality', `${safeMp3Bitrate}K`
+          '--audio-quality', `${safeMp3Bitrate}K`,
+          '--no-embed-thumbnail',
         ]);
       } else {
-        const heightFilter = `[height<=${safeResolution}]`;
+        const h = safeResolution;
         if (forceRecodeMp4) {
+          // SAFE FALLBACK: download a single pre-muxed stream (no merger step = no header crash)
+          // then recode it to MP4. 'best' avoids any cross-container mux entirely.
           args = args.concat([
-            '-f', `bestvideo${heightFilter}+bestaudio/best${heightFilter}/best`,
-            '--recode-video', 'mp4'
+            '-f', `best[height<=${h}][ext=mp4]/best[height<=${h}]/best`,
+            '--recode-video', 'mp4',
           ]);
         } else {
+          // PRIMARY: explicitly request H.264 video + AAC audio in MP4/M4A containers.
+          // yt-dlp will pick natively compatible streams before falling back.
+          // bestvideo/bestaudio (full names) used for broad yt-dlp version compatibility.
           args = args.concat([
-            '-f', `bestvideo${heightFilter}+bestaudio/best${heightFilter}/best`,
-            '--merge-output-format', 'mp4'
+            '-f',
+            `bestvideo[vcodec^=avc1][height<=${h}]+bestaudio[acodec^=mp4a]` +
+            `/bestvideo[ext=mp4][height<=${h}]+bestaudio[ext=m4a]` +
+            `/bestvideo[height<=${h}]+bestaudio[ext=m4a]` +
+            `/bestvideo[height<=${h}]+bestaudio` +
+            `/best[height<=${h}]/best`,
+            '--merge-output-format', 'mp4',
           ]);
         }
       }
@@ -562,15 +809,27 @@ ipcMain.handle('start-download', async (
       return args;
     };
 
+    // Delete any leftover partial files from a previous failed attempt for this stem.
+    function cleanPartialFiles(stem) {
+      try {
+        const entries = fs.readdirSync(safeOutputFolder, { withFileTypes: true });
+        for (const e of entries) {
+          if (
+            e.isFile() &&
+            (e.name.startsWith(stem) || e.name.includes('.part')) &&
+            /\.(part|ytdl|temp)$/i.test(e.name)
+          ) {
+            try { fs.unlinkSync(path.join(safeOutputFolder, e.name)); } catch { }
+          }
+        }
+      } catch { }
+    }
+
     if (runningDownloads.has(safeDownloadId)) {
       reject(new Error('Download is already running.'));
       return;
     }
     let settled = false;
-    let attemptUsedIdOnlyTemplate = false;
-    let attemptUsedSubtitles = safeDownloadSubtitles;
-    let retriedWithoutSubtitles = false;
-    let retriedWithSimpleOutput = false;
     let retriedWithMp4Recode = false;
 
     const settle = (fn, value) => {
@@ -585,10 +844,11 @@ ipcMain.handle('start-download', async (
       forceRecodeMp4 = false
     ) => {
       if (settled) return;
-      attemptUsedIdOnlyTemplate = useIdOnlyTemplate;
-      attemptUsedSubtitles = subtitlesEnabled;
 
-      const proc = spawn(ytdlp, buildArgs(useIdOnlyTemplate, subtitlesEnabled, forceRecodeMp4), {
+      // Clean up any .part files before starting/retrying
+      cleanPartialFiles(String(useIdOnlyTemplate ? safeDownloadId : buildSafeTitleStem(safeTitle, safeDownloadId, 6, 40)));
+
+      const proc = spawnTracked(ytdlp, buildArgs(useIdOnlyTemplate, subtitlesEnabled, forceRecodeMp4), {
         env: {
           ...process.env,
           PYTHONIOENCODING: 'utf-8'
@@ -625,18 +885,26 @@ ipcMain.handle('start-download', async (
         settle(reject, new Error(message));
       });
 
+      let lastIpcTime = 0;
       proc.stdout.on('data', (data) => {
-        stdoutTail = `${stdoutTail}${data.toString()}`.slice(-12000);
-        const lines = data.toString().split('\n');
+        const chunk = data.toString();
+        stdoutTail = `${stdoutTail}${chunk}`.slice(-12000);
+        const lines = chunk.split('\n');
         lines.forEach(line => {
           const match = line.match(/(\d+\.?\d*)%\s+of\s+~?\s*([\d.]+\s*\w+)/);
           if (match) {
-            mainWindow.webContents.send('download-progress', {
-              downloadId: safeDownloadId,
-              percent: parseFloat(match[1]),
-              fileSize: match[2],
-              status: 'downloading'
-            });
+            const percent = parseFloat(match[1]);
+            const isFinished = percent === 100;
+            const now = Date.now();
+            if (isFinished || now - lastIpcTime > 100) {
+              lastIpcTime = now;
+              mainWindow.webContents.send('download-progress', {
+                downloadId: safeDownloadId,
+                percent,
+                fileSize: match[2],
+                status: 'downloading'
+              });
+            }
           }
           if (line.includes('[Merger]') || line.includes('[ExtractAudio]')) {
             mainWindow.webContents.send('download-progress', {
@@ -652,7 +920,7 @@ ipcMain.handle('start-download', async (
       proc.stderr.on('data', (data) => {
         const chunk = data.toString();
         stderrOutput = `${stderrOutput}${chunk}`.slice(-16000);
-        console.error('[yt-dlp stderr]', chunk);
+        console.error('[yt-dlp stderr]', chunk.trim());
       });
 
       proc.on('close', (code) => {
@@ -662,17 +930,11 @@ ipcMain.handle('start-download', async (
         if (code === 0) {
           let outputFilePath = '';
           try {
-            const entries = fs.readdirSync(safeOutputFolder, { withFileTypes: true });
-            const media = entries
-              .filter((e) => e.isFile() && /\.(mp4|mp3|webm|mkv)$/i.test(e.name))
-              .map((e) => ({
-                name: e.name,
-                path: path.join(safeOutputFolder, e.name),
-                mtime: fs.statSync(path.join(safeOutputFolder, e.name)).mtimeMs
-              }));
-            media.sort((a, b) => b.mtime - a.mtime);
-            if (media.length > 0) outputFilePath = media[0].path;
-          } catch (_) {}
+            const completedStem = useIdOnlyTemplate
+              ? String(safeDownloadId)
+              : buildSafeTitleStem(safeTitle, safeDownloadId, 6, 40);
+            outputFilePath = resolveGeneratedDownloadFile(safeOutputFolder, completedStem, safeFormat);
+          } catch (_) { }
           mainWindow.webContents.send('download-progress', {
             downloadId: safeDownloadId,
             percent: 100,
@@ -696,53 +958,34 @@ ipcMain.handle('start-download', async (
           return;
         }
 
+        // Combine both stderr and stdout for error detection — yt-dlp sometimes
+        // emits postprocessing errors via stdout (e.g. [Merger] lines).
+        const combinedOutput = `${stderrOutput}\n${stdoutTail}`;
         const message = extractYtDlpError(stderrOutput, stdoutTail);
-        if (!attemptUsedIdOnlyTemplate && isWindowsPathArgumentError(message)) {
+
+        // PATH-length error → retry with numeric-only filename
+        if (isWindowsPathArgumentError(message)) {
           mainWindow.webContents.send('download-progress', {
             downloadId: safeDownloadId,
             percent: 0,
             fileSize: '',
             status: 'processing',
-            error: ''
+            error: 'Path error — retrying with a shorter filename...'
           });
           runAttempt(true);
           return;
         }
 
-        if (!retriedWithoutSubtitles && attemptUsedSubtitles && isPostprocessingHeaderArgumentError(message)) {
-          retriedWithoutSubtitles = true;
-          mainWindow.webContents.send('download-progress', {
-            downloadId: safeDownloadId,
-            percent: 0,
-            fileSize: '',
-            status: 'processing',
-            error: 'Retrying without subtitles due to FFmpeg postprocessing error...'
-          });
-          runAttempt(true, false);
-          return;
-        }
-
-        if (!retriedWithSimpleOutput && isPostprocessingHeaderArgumentError(message)) {
-          retriedWithSimpleOutput = true;
-          mainWindow.webContents.send('download-progress', {
-            downloadId: safeDownloadId,
-            percent: 0,
-            fileSize: '',
-            status: 'processing',
-            error: 'Retrying with a simplified output path...'
-          });
-          runAttempt(true, false);
-          return;
-        }
-
-        if (!retriedWithMp4Recode && safeFormat === 'mp4' && isPostprocessingHeaderArgumentError(message)) {
+        // FFmpeg postprocessing / codec crash → force full recode on retry.
+        // This is a SINGLE retry that covers all postprocessing error variants.
+        if (!retriedWithMp4Recode && isPostprocessingHeaderArgumentError(combinedOutput)) {
           retriedWithMp4Recode = true;
           mainWindow.webContents.send('download-progress', {
             downloadId: safeDownloadId,
             percent: 0,
             fileSize: '',
             status: 'processing',
-            error: 'Retrying with MP4 recode for compatibility...'
+            error: 'Codec mismatch — retrying with forced MP4 re-encode...'
           });
           runAttempt(true, false, true);
           return;
@@ -766,35 +1009,38 @@ ipcMain.handle('start-download', async (
 ipcMain.handle('open-folder', async (event, folderPath) => {
   if (typeof folderPath !== 'string' || !folderPath) return { success: false };
   try {
-    const errorMessage = await shell.openPath(folderPath);
+    const safeFolderPath = validateFolder(folderPath);
+    const errorMessage = await shell.openPath(safeFolderPath);
     return errorMessage ? { success: false, message: errorMessage } : { success: true };
-  } catch {
-    return { success: false };
+  } catch (error) {
+    return { success: false, message: error.message || 'Could not open folder.' };
   }
 });
 
 ipcMain.handle('play-file', async (event, filePath) => {
   if (typeof filePath !== 'string' || !filePath) return { success: false };
   try {
-    if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {
+    const safeFilePath = path.resolve(filePath);
+    if (!path.isAbsolute(safeFilePath)) {
+      return { success: false, message: 'File path must be absolute.' };
+    }
+    if (!fs.existsSync(safeFilePath) || !fs.statSync(safeFilePath).isFile()) {
       return { success: false, message: 'File not found.' };
     }
-    const errorMessage = await shell.openPath(filePath);
+    const errorMessage = await shell.openPath(safeFilePath);
     return errorMessage ? { success: false, message: errorMessage } : { success: true };
-  } catch {
-    return { success: false };
+  } catch (error) {
+    return { success: false, message: error.message || 'Could not open file.' };
   }
 });
 
 ipcMain.handle('open-external-url', async (event, rawUrl) => {
-  if (!isSafeHttpUrl(rawUrl)) {
-    return { success: false, message: 'Invalid URL.' };
-  }
   try {
-    await shell.openExternal(rawUrl);
+    const safeUrl = sanitizeHttpUrl(rawUrl);
+    await shell.openExternal(safeUrl);
     return { success: true };
-  } catch {
-    return { success: false, message: 'Could not open external URL.' };
+  } catch (error) {
+    return { success: false, message: error.message || 'Could not open external URL.' };
   }
 });
 
@@ -824,30 +1070,51 @@ ipcMain.handle('get-settings', async () => {
 });
 
 ipcMain.handle('set-settings', async (event, settings) => {
-  if (!settings || typeof settings !== 'object') {
-    return { success: false, message: 'Invalid settings payload.' };
+  try {
+    if (!settings || typeof settings !== 'object') {
+      return { success: false, message: 'Invalid settings payload.' };
+    }
+    const current = readSettings();
+    if (settings.downloadFolder != null) current.downloadFolder = validateFolder(settings.downloadFolder);
+    if (settings.defaultQuality != null) current.defaultQuality = settings.defaultQuality;
+    if (settings.defaultFormat != null) current.defaultFormat = settings.defaultFormat;
+    if (settings.theme === 'light' || settings.theme === 'dark' || settings.theme === 'system') {
+      current.theme = settings.theme;
+    }
+    const ok = writeSettings(current);
+    return ok ? { success: true } : { success: false, message: 'Could not save settings.' };
+  } catch (error) {
+    return { success: false, message: error.message || 'Could not save settings.' };
   }
-  const current = readSettings();
-  if (settings.downloadFolder != null) current.downloadFolder = settings.downloadFolder;
-  if (settings.defaultQuality != null) current.defaultQuality = settings.defaultQuality;
-  if (settings.defaultFormat != null) current.defaultFormat = settings.defaultFormat;
-  if (settings.theme === 'light' || settings.theme === 'dark' || settings.theme === 'system') {
-    current.theme = settings.theme;
-  }
-  const ok = writeSettings(current);
-  return ok ? { success: true } : { success: false, message: 'Could not save settings.' };
 });
 
 function getYtDlpVersion() {
   return new Promise((resolve) => {
     const ytdlp = getToolPath('yt-dlp.exe');
-    const proc = spawn(ytdlp, ['--version'], { stdio: ['ignore', 'pipe', 'pipe'] });
+    const proc = spawnTracked(ytdlp, ['--version'], { stdio: ['ignore', 'pipe', 'pipe'] });
     let stdout = '';
     let stderr = '';
-    proc.stdout.on('data', (d) => { stdout += d.toString(); });
-    proc.stderr.on('data', (d) => { stderr += d.toString(); });
-    proc.on('error', () => resolve({ success: false, message: 'Failed to start yt-dlp.' }));
+    let settled = false;
+
+    const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      killProcessTreeSync(proc);
+      resolve({ success: false, message: 'yt-dlp version check timed out.' });
+    }, 60 * 1000);
+
+    proc.stdout.on('data', (d) => { if (!settled) stdout += d.toString(); });
+    proc.stderr.on('data', (d) => { if (!settled) stderr += d.toString(); });
+    proc.on('error', () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      resolve({ success: false, message: 'Failed to start yt-dlp.' });
+    });
     proc.on('close', (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
       if (code !== 0) {
         resolve({ success: false, message: (stderr || 'Could not read yt-dlp version.').trim() });
         return;
@@ -869,13 +1136,30 @@ ipcMain.handle('get-yt-dlp-version', async () => {
 ipcMain.handle('update-yt-dlp', async () => {
   return new Promise((resolve) => {
     const ytdlp = getToolPath('yt-dlp.exe');
-    const proc = spawn(ytdlp, ['-U'], { stdio: ['ignore', 'pipe', 'pipe'] });
+    const proc = spawnTracked(ytdlp, ['-U'], { stdio: ['ignore', 'pipe', 'pipe'] });
     let stdout = '';
     let stderr = '';
-    proc.stdout.on('data', (d) => { stdout += d.toString(); });
-    proc.stderr.on('data', (d) => { stderr += d.toString(); });
-    proc.on('error', () => resolve({ success: false, message: 'Failed to start yt-dlp.' }));
+    let settled = false;
+
+    const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      killProcessTreeSync(proc);
+      resolve({ success: false, message: 'yt-dlp update timed out.' });
+    }, 180 * 1000);
+
+    proc.stdout.on('data', (d) => { if (!settled) stdout += d.toString(); });
+    proc.stderr.on('data', (d) => { if (!settled) stderr += d.toString(); });
+    proc.on('error', () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      resolve({ success: false, message: 'Failed to start yt-dlp.' });
+    });
     proc.on('close', async (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
       if (code === 0) {
         const versionResult = await getYtDlpVersion();
         if (versionResult.success) {
@@ -888,6 +1172,34 @@ ipcMain.handle('update-yt-dlp', async () => {
       }
     });
   });
+});
+
+ipcMain.handle('check-yt-dlp-update', async () => {
+  try {
+    const res = await fetch('https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest', {
+      headers: { 'User-Agent': 'MediaDl-AutoUpdater' }
+    });
+    if (!res.ok) {
+      return { success: false, message: 'Failed to fetch latest release from GitHub.' };
+    }
+    const data = await res.json();
+    const latestVersion = data.tag_name || '';
+
+    if (!latestVersion) {
+      return { success: false, message: 'Could not parse latest release version.' };
+    }
+
+    const currentResult = await getYtDlpVersion();
+    let currentVersion = 'Unknown';
+    if (currentResult.success) {
+      currentVersion = currentResult.version;
+    }
+
+    const updateAvailable = latestVersion !== currentVersion;
+    return { success: true, updateAvailable, latestVersion, currentVersion };
+  } catch (error) {
+    return { success: false, message: error.message || 'Error checking for updates.' };
+  }
 });
 
 ipcMain.handle('cancel-download', async (event, downloadId) => {
@@ -927,15 +1239,32 @@ function getMediaDurationSeconds(inputPath) {
   const ffprobe = getFfprobePath();
   if (!ffprobe || typeof inputPath !== 'string' || !fs.existsSync(inputPath)) return null;
   return new Promise((resolve) => {
-    const proc = spawn(ffprobe, [
+    const proc = spawnTracked(ffprobe, [
       '-v', 'error', '-show_entries', 'format=duration',
       '-of', 'default=noprint_wrappers=1:nokey=1',
       inputPath
     ], { stdio: ['ignore', 'pipe', 'pipe'] });
     let out = '';
-    proc.stdout.on('data', (d) => { out += d.toString(); });
-    proc.on('error', () => resolve(null));
+    let settled = false;
+
+    const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      killProcessTreeSync(proc);
+      resolve(null);
+    }, 30 * 1000);
+
+    proc.stdout.on('data', (d) => { if (!settled) out += d.toString(); });
+    proc.on('error', () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      resolve(null);
+    });
     proc.on('close', (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
       if (code !== 0) return resolve(null);
       const num = parseFloat(out.trim());
       resolve(Number.isFinite(num) ? num : null);
@@ -951,7 +1280,7 @@ async function hasVideoStream(inputPath) {
   }
 
   return new Promise((resolve) => {
-    const proc = spawn(ffprobe, [
+    const proc = spawnTracked(ffprobe, [
       '-v', 'error',
       '-select_streams', 'v:0',
       '-show_entries', 'stream=codec_type',
@@ -960,9 +1289,26 @@ async function hasVideoStream(inputPath) {
     ], { stdio: ['ignore', 'pipe', 'pipe'] });
 
     let out = '';
-    proc.stdout.on('data', (d) => { out += d.toString(); });
-    proc.on('error', () => resolve(false));
+    let settled = false;
+
+    const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      killProcessTreeSync(proc);
+      resolve(false);
+    }, 30 * 1000);
+
+    proc.stdout.on('data', (d) => { if (!settled) out += d.toString(); });
+    proc.on('error', () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      resolve(false);
+    });
     proc.on('close', (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
       if (code !== 0) return resolve(false);
       resolve(out.toLowerCase().includes('video'));
     });
@@ -1029,14 +1375,16 @@ function formatFileSize(bytes) {
   return `${size.toFixed(idx === 0 ? 0 : 1)} ${units[idx]}`;
 }
 
-function uniquePath(targetPath) {
-  if (!fs.existsSync(targetPath)) return targetPath;
-  const ext = path.extname(targetPath);
-  const name = targetPath.slice(0, -ext.length);
+function uniquePath(targetPath, baseFolder = null, label = 'Output path') {
+  const initialTarget = baseFolder ? validateOutputPathWithinBase(targetPath, baseFolder, label) : targetPath;
+  if (!fs.existsSync(initialTarget)) return initialTarget;
+  const ext = path.extname(initialTarget);
+  const name = initialTarget.slice(0, -ext.length);
   let i = 1;
   while (true) {
     const candidate = `${name}_${i}${ext}`;
-    if (!fs.existsSync(candidate)) return candidate;
+    const safeCandidate = baseFolder ? validateOutputPathWithinBase(candidate, baseFolder, label) : candidate;
+    if (!fs.existsSync(safeCandidate)) return safeCandidate;
     i += 1;
   }
 }
@@ -1054,8 +1402,16 @@ function runFfmpegWithProgress({ inputPath, outputPath, args, durationSeconds, p
       return;
     }
 
-    const fullArgs = ['-y', '-i', inputPath, ...args, outputPath];
-    const proc = spawn(ffmpeg, fullArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
+    let safeOutputPath;
+    try {
+      safeOutputPath = validateOutputPathWithinBase(outputPath, getTrustedDownloadRoot(), 'Media tools output path');
+    } catch (error) {
+      reject(error);
+      return;
+    }
+
+    const fullArgs = ['-y', '-i', inputPath, ...args, safeOutputPath];
+    const proc = spawnTracked(ffmpeg, fullArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
     let lastPercent = 0;
     let stderrAll = '';
 
@@ -1085,7 +1441,7 @@ function runFfmpegWithProgress({ inputPath, outputPath, args, durationSeconds, p
           etaSeconds: 0,
           ...progressMeta,
         });
-        resolve({ outputPath });
+        resolve({ outputPath: safeOutputPath });
         return;
       }
       const trimmedErr = String(stderrAll || '').trim();
@@ -1174,12 +1530,15 @@ ipcMain.handle('media-tools-run-pipeline', async (event, payload) => {
   if (resolvedInputs.length === 0) throw new Error('No valid media files selected.');
 
   const results = [];
+  const downloadRoot = getTrustedDownloadRoot();
   for (let i = 0; i < resolvedInputs.length; i += 1) {
     const inputPath = resolvedInputs[i];
     const sourceName = path.basename(inputPath);
     const sourceBase = sanitizeBaseName(path.basename(inputPath, path.extname(inputPath)));
     const sourceDir = path.dirname(inputPath);
-    const outputDir = outputFolderRaw && fs.existsSync(outputFolderRaw) ? path.resolve(outputFolderRaw) : sourceDir;
+    const outputDir = outputFolderRaw
+      ? validateFolderWithinBase(outputFolderRaw, downloadRoot, 'Tools output folder')
+      : downloadRoot;
     const duration = await getMediaDurationSeconds(inputPath);
     const requiresVideo = ['convert', 'compress', 'strip', 'gif', 'resize'].includes(feature);
     if (requiresVideo) {
@@ -1196,7 +1555,11 @@ ipcMain.handle('media-tools-run-pipeline', async (event, payload) => {
 
     if (feature === 'extract') {
       const outputAudioFormat = String(pipeline.extractAudioFormat).toLowerCase();
-      const outputAudioPath = uniquePath(path.join(outputDir, `${sourceBase}_audio.${outputAudioFormat}`));
+      const outputAudioPath = uniquePath(
+        path.join(outputDir, `${sourceBase}_audio.${outputAudioFormat}`),
+        downloadRoot,
+        'Media tools output path'
+      );
       await runFfmpegWithProgress({
         inputPath,
         outputPath: outputAudioPath,
@@ -1222,7 +1585,11 @@ ipcMain.handle('media-tools-run-pipeline', async (event, payload) => {
       if (trimStartSeconds != null) gifArgs.push('-ss', normalizeTimeForFfmpeg(pipeline.trimStart));
       gifArgs.push('-t', Number.isFinite(gifDuration) && gifDuration > 0 ? String(gifDuration) : '10');
       gifArgs.push('-vf', 'fps=10,scale=500:-1:flags=lanczos');
-      const outputGifPath = uniquePath(path.join(outputDir, `${sourceBase}.gif`));
+      const outputGifPath = uniquePath(
+        path.join(outputDir, `${sourceBase}.gif`),
+        downloadRoot,
+        'Media tools output path'
+      );
       await runFfmpegWithProgress({
         inputPath,
         outputPath: outputGifPath,
@@ -1248,7 +1615,11 @@ ipcMain.handle('media-tools-run-pipeline', async (event, payload) => {
       const outputVideoFormat = feature === 'convert'
         ? String(pipeline.convertFormat).toLowerCase()
         : (feature === 'trim' && inputExt ? inputExt : 'mp4');
-      const outputVideoPath = uniquePath(path.join(outputDir, `${sourceBase}_processed.${outputVideoFormat}`));
+      const outputVideoPath = uniquePath(
+        path.join(outputDir, `${sourceBase}_processed.${outputVideoFormat}`),
+        downloadRoot,
+        'Media tools output path'
+      );
       const filters = buildVideoFilters({ resizePreset: feature === 'resize' ? pipeline.resizePreset : '' });
       const args = [];
 
@@ -1293,17 +1664,26 @@ ipcMain.handle('media-tools-run-pipeline', async (event, payload) => {
   return {
     success: true,
     results,
-    outputFolder: outputFolderRaw || path.dirname(resolvedInputs[0]),
+    outputFolder: outputFolderRaw
+      ? validateFolderWithinBase(outputFolderRaw, downloadRoot, 'Tools output folder')
+      : downloadRoot,
   };
 });
 
 ipcMain.handle('show-item-in-folder', async (event, filePath) => {
   if (typeof filePath !== 'string' || !filePath) return { success: false };
   try {
-    shell.showItemInFolder(path.resolve(filePath));
+    const safeFilePath = path.resolve(filePath);
+    if (!path.isAbsolute(safeFilePath)) {
+      return { success: false, message: 'File path must be absolute.' };
+    }
+    if (!fs.existsSync(safeFilePath) || !fs.statSync(safeFilePath).isFile()) {
+      return { success: false, message: 'File not found.' };
+    }
+    shell.showItemInFolder(safeFilePath);
     return { success: true };
-  } catch {
-    return { success: false };
+  } catch (error) {
+    return { success: false, message: error.message || 'Could not reveal file.' };
   }
 });
 

@@ -307,12 +307,10 @@ if (btnGithub) {
     event.stopPropagation();
 
     const repoUrl = 'https://github.com/KevClint/MediaDl';
-    try {
-      window.open(repoUrl, '_blank', 'noopener');
-      return;
-    } catch (_) {}
-
-    showToast('Could not open GitHub link. Restart the app and try again.', 'error');
+    const result = await window.electronAPI.openExternalUrl(repoUrl);
+    if (!result || !result.success) {
+      showToast('Could not open GitHub link. Restart the app and try again.', 'error');
+    }
   });
 }
 
@@ -763,6 +761,33 @@ function getFriendlyMediaToolsError(error) {
   return msg;
 }
 
+function normalizeComparablePath(value) {
+  return String(value || '').replace(/[\\/]+/g, '/').toLowerCase();
+}
+
+function isPathInside(basePath, targetPath) {
+  const base = normalizeComparablePath(basePath).replace(/\/+$/, '');
+  const target = normalizeComparablePath(targetPath);
+  return target === base || target.startsWith(`${base}/`);
+}
+
+async function resolveCompletedOutputFile(job) {
+  if (!job || !job.outputFolder) return '';
+
+  const result = await window.electronAPI.resolveOutputFile({
+    outputFolder: job.outputFolder,
+    title: job.title || '',
+    format: job.format,
+  });
+
+  if (result && result.success && result.filePath) {
+    updateJob(job.id, { outputFilePath: result.filePath });
+    return result.filePath;
+  }
+
+  return '';
+}
+
 async function runTool(invoker, opts) {
   if (toolsIsProcessing) return;
   if (toolsSelectedPaths.length === 0) {
@@ -848,8 +873,16 @@ btnToolsStart?.addEventListener('click', () => {
 });
 
 btnToolsOutputFolder?.addEventListener('click', async () => {
+  if (!downloadFolder) {
+    showToast('Select a download folder first', 'error');
+    return;
+  }
   const folder = await window.electronAPI.selectFolder();
   if (!folder) return;
+  if (!isPathInside(downloadFolder, folder)) {
+    showToast('Tools output folder must stay inside the selected download folder', 'error');
+    return;
+  }
   toolsOutputFolder = folder;
   if (toolsOutputFolderEl) toolsOutputFolderEl.value = folder;
 });
@@ -1010,13 +1043,18 @@ document.getElementById('btn-paste').onclick = async () => {
 async function playCompletedJob(job) {
   if (!job || !job.outputFolder) return;
 
-  if (!job.outputFilePath) {
+  let outputFilePath = job.outputFilePath;
+  if (!outputFilePath) {
+    outputFilePath = await resolveCompletedOutputFile(job);
+  }
+
+  if (!outputFilePath) {
     showToast('Video file missing. Removed from Downloads.', 'error');
     removeCompletedFromList(job.id);
     return;
   }
 
-  const playResult = await window.electronAPI.playFile(job.outputFilePath);
+  const playResult = await window.electronAPI.playFile(outputFilePath);
   if (playResult && playResult.success) return;
 
   const message = String((playResult && playResult.message) || '').toLowerCase();
@@ -1026,6 +1064,11 @@ async function playCompletedJob(job) {
     || message.includes('path not found');
 
   if (isMissingFile) {
+    const resolvedPath = await resolveCompletedOutputFile(job);
+    if (resolvedPath) {
+      const retryResult = await window.electronAPI.playFile(resolvedPath);
+      if (retryResult && retryResult.success) return;
+    }
     showToast('Video file not found. Removed from Downloads.', 'error');
     removeCompletedFromList(job.id);
     return;

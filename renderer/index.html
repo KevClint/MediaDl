@@ -1,31 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' ws://localhost:1420 ws://127.0.0.1:1420 http://localhost:1420 http://127.0.0.1:1420 http://ipc.localhost https://ipc.localhost ipc:; object-src 'none'; base-uri 'self'">
+    content="default-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' http://127.0.0.1:1420 ws://127.0.0.1:1420 http://localhost:1420 ws://localhost:1420; media-src 'self' data:; frame-src 'none'; worker-src 'none'; manifest-src 'self'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="color-scheme" content="dark light" />
   <title>MediaDl</title>
-  <style>
-    html {
-      background: #09090b;
-    }
-
-    html[data-theme="light"] {
-      background: #f3f4f6;
-    }
-
-    body {
-      background: transparent;
-    }
-  </style>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 </head>
+
 <body>
   <div id="root"></div>
   <script type="module" src="./main.jsx"></script>
 </body>
+
 </html>

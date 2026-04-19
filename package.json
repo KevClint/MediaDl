@@ -1,6 +1,6 @@
 {
   "name": "mediadl",
-  "version": "2.4.3",
+  "version": "2.3.1",
   "description": "Multi-platform video and music downloader",
   "author": "kevclint",
   "type": "commonjs",
@@ -18,7 +18,7 @@
     "@vitejs/plugin-react": "^5.1.4",
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
-    "electron": "^37.4.0",
+    "electron": "^41.2.1",
     "electron-builder": "^26.0.12",
     "vite": "^7.3.1",
     "wait-on": "^8.0.5"
@@ -52,7 +52,10 @@
       }
     ],
     "win": {
-      "target": ["portable", "nsis"],
+      "target": [
+        "portable",
+        "nsis"
+      ],
       "icon": "assets/icon.ico"
     },
     "nsis": {
