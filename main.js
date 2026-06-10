@@ -9,16 +9,19 @@ const ALLOWED_FORMATS = new Set(['mp3', 'mp4']);
 const ALLOWED_RESOLUTIONS = new Set(['144', '360', '480', '720', '1080', '2160']);
 const ALLOWED_MP3_BITRATES = new Set(['128', '192', '320']);
 const runningDownloads = new Map();
+const runningSpotifyDownloads = new Map();
 const activeProcesses = new Set();
 const SETTINGS_FILE = 'settings.json';
 
 function getToolPath(toolName) {
-  if (isDev) {
-    return path.join(__dirname, 'tools', toolName);
-  }
-  const asarUnpackedPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'tools', toolName);
-  if (fs.existsSync(asarUnpackedPath)) return asarUnpackedPath;
-  return path.join(process.resourcesPath, 'tools', toolName);
+  const rootToolPath = path.join(__dirname, 'tools', toolName);
+  if (fs.existsSync(rootToolPath)) return rootToolPath;
+
+  const unpackedToolPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'tools', toolName);
+  if (fs.existsSync(unpackedToolPath)) return unpackedToolPath;
+
+  const packagedToolPath = path.join(process.resourcesPath, 'tools', toolName);
+  return packagedToolPath;
 }
 
 function ensureRequiredToolsPresent() {
@@ -555,6 +558,9 @@ function killAllProcesses() {
     killProcessTreeSync(proc);
   }
   for (const proc of runningDownloads.values()) {
+    killProcessTreeSync(proc);
+  }
+  for (const proc of runningSpotifyDownloads.values()) {
     killProcessTreeSync(proc);
   }
 }
@@ -1685,6 +1691,164 @@ ipcMain.handle('show-item-in-folder', async (event, filePath) => {
   } catch (error) {
     return { success: false, message: error.message || 'Could not reveal file.' };
   }
+});
+
+function getSptScriptPath() {
+  const devPath = path.join(__dirname, 'spt.py');
+  if (fs.existsSync(devPath)) return devPath;
+  const prodPath = path.join(process.resourcesPath, 'spt.py');
+  if (fs.existsSync(prodPath)) return prodPath;
+  const unpackedPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'spt.py');
+  return unpackedPath;
+}
+
+ipcMain.handle('start-spotify-download', async (event, { url, outputFolder, downloadId }) => {
+  return new Promise((resolve, reject) => {
+    try {
+      if (!url || typeof url !== 'string' || !url.trim()) {
+        throw new Error('URL is required.');
+      }
+      if (!outputFolder || typeof outputFolder !== 'string' || !outputFolder.trim()) {
+        throw new Error('Output folder is required.');
+      }
+      if (!Number.isInteger(downloadId) || downloadId < 1) {
+        throw new Error('Invalid download ID.');
+      }
+
+      const safeUrl = sanitizeHttpUrl(url);
+      const safeOutputFolder = validateFolderWithinBase(outputFolder, getTrustedDownloadRoot());
+      const sptScript = getSptScriptPath();
+
+      if (!fs.existsSync(sptScript)) {
+        throw new Error(`Spotify downloader script not found at ${sptScript}`);
+      }
+
+      if (runningSpotifyDownloads.has(downloadId)) {
+        throw new Error('Download is already running.');
+      }
+
+      const proc = spawnTracked('uv', ['run', sptScript, safeUrl, safeOutputFolder], {
+        env: {
+          ...process.env,
+          PYTHONIOENCODING: 'utf-8'
+        },
+        windowsHide: true
+      });
+
+      proc.cancelRequested = false;
+      runningSpotifyDownloads.set(downloadId, proc);
+
+      let stderrOutput = '';
+      let stdoutTail = '';
+      let trackTitle = '';
+
+      proc.stdout.on('data', (data) => {
+        const chunk = data.toString();
+        stdoutTail = `${stdoutTail}${chunk}`.slice(-12000);
+        
+        const titleMatch = chunk.match(/🎵 TRACK IDENTIFIED:\s*(.+)/);
+        if (titleMatch) {
+          trackTitle = titleMatch[1].trim();
+          mainWindow.webContents.send('spotify-download-progress', {
+            downloadId,
+            title: trackTitle,
+            status: 'downloading',
+            percent: 0
+          });
+        }
+
+        const percentMatch = chunk.match(/Progress:\s*([\d.]+)%/);
+        if (percentMatch) {
+          const percent = parseFloat(percentMatch[1]);
+          mainWindow.webContents.send('spotify-download-progress', {
+            downloadId,
+            percent,
+            status: 'downloading'
+          });
+        }
+      });
+
+      proc.stderr.on('data', (data) => {
+        const chunk = data.toString();
+        stderrOutput = `${stderrOutput}${chunk}`.slice(-16000);
+        console.error('[spt.py stderr]', chunk.trim());
+      });
+
+      proc.on('error', (err) => {
+        runningSpotifyDownloads.delete(downloadId);
+        reject(new Error(err.message || 'Failed to start Python process'));
+      });
+
+      proc.on('close', (code) => {
+        runningSpotifyDownloads.delete(downloadId);
+        
+        if (code === 0) {
+          let outputFilePath = '';
+          try {
+            if (trackTitle) {
+              const stem = trackTitle.replace(/[\\/*?:"<>|]/g, "").replace(/ /g, "_");
+              const expectedPath = path.join(safeOutputFolder, `${stem}.mp3`);
+              if (fs.existsSync(expectedPath)) {
+                outputFilePath = expectedPath;
+              } else {
+                outputFilePath = resolveGeneratedDownloadFile(safeOutputFolder, stem, 'mp3');
+              }
+            }
+          } catch (_) {}
+
+          mainWindow.webContents.send('spotify-download-progress', {
+            downloadId,
+            percent: 100,
+            status: 'completed',
+            outputFilePath: outputFilePath || undefined
+          });
+          resolve({ success: true });
+        } else {
+          if (proc.cancelRequested) {
+            mainWindow.webContents.send('spotify-download-progress', {
+              downloadId,
+              status: 'canceled',
+              error: 'Download canceled by user.'
+            });
+            resolve({ success: false, canceled: true });
+          } else {
+            let errMsg = 'Download failed.';
+            if (stderrOutput.includes('Security structure changed')) {
+              errMsg = 'Security structure changed on site (spotidown.app).';
+            } else if (stderrOutput.includes('Validation backend rejected')) {
+              errMsg = 'Validation backend rejected handshake inputs.';
+            } else if (stderrOutput.includes('Data stream execution failed')) {
+              const match = stderrOutput.match(/Data stream execution failed:\s*(.+)/);
+              errMsg = match ? match[1] : 'Data stream execution failed.';
+            } else if (stdoutTail.includes('[-]')) {
+              const lines = stdoutTail.split('\n');
+              const lastErr = lines.reverse().find(l => l.includes('[-]'));
+              if (lastErr) errMsg = lastErr.replace(/^-\s*/, '').trim();
+            } else if (stderrOutput.trim()) {
+              errMsg = stderrOutput.trim().split('\n').pop();
+            }
+            mainWindow.webContents.send('spotify-download-progress', {
+              downloadId,
+              status: 'failed',
+              error: errMsg
+            });
+            reject(new Error(errMsg));
+          }
+        }
+      });
+
+    } catch (err) {
+      reject(err);
+    }
+  });
+});
+
+ipcMain.handle('cancel-spotify-download', async (event, downloadId) => {
+  const proc = runningSpotifyDownloads.get(downloadId);
+  if (!proc) return { success: false, message: 'Download is not running.' };
+  proc.cancelRequested = true;
+  const killed = await killProcessTree(proc);
+  return killed ? { success: true } : { success: false };
 });
 
 // ── Window controls ──

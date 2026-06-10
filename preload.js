@@ -25,6 +25,8 @@ const INVOKE_CHANNELS = new Set([
   'media-tools-run-pipeline',
   'show-item-in-folder',
   'open-external-url',
+  'start-spotify-download',
+  'cancel-spotify-download',
 ]);
 const SEND_CHANNELS = new Set([
   'window-minimize',
@@ -34,6 +36,7 @@ const SEND_CHANNELS = new Set([
 const SUBSCRIBE_CHANNELS = new Set([
   'download-progress',
   'media-tools-progress',
+  'spotify-download-progress',
 ]);
 
 function expectCallback(callback, label) {
@@ -94,6 +97,9 @@ contextBridge.exposeInMainWorld('electronAPI', Object.freeze({
   onMediaToolsProgress: (cb) => subscribe('media-tools-progress', cb),
   showItemInFolder: (filePath) => invoke('show-item-in-folder', filePath),
   openExternalUrl: (url) => invoke('open-external-url', url),
+  startSpotifyDownload: (options) => invoke('start-spotify-download', options),
+  cancelSpotifyDownload: (downloadId) => invoke('cancel-spotify-download', downloadId),
+  onSpotifyDownloadProgress: (cb) => subscribe('spotify-download-progress', cb),
   minimizeWindow: () => send('window-minimize'),
   maximizeWindow: () => send('window-maximize'),
   closeWindow: () => send('window-close'),

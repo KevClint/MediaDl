@@ -57,6 +57,24 @@ const queueEl = document.getElementById('queue');
 const emptyState = document.getElementById('empty-state');
 const autoOpenedFolders = new Set();
 
+const spotCardRefs = new Map();
+const spotCancelRequested = new Set();
+let spotQueue = [];
+let spotIdCounter = 0;
+let activeSpotDownloads = 0;
+const MAX_CONCURRENT_SPOT_DOWNLOADS = 1;
+const SPOT_STATE_STORAGE_KEY = 'mediadl.spotQueue.v1';
+
+const spotUrlInput = document.getElementById('spot-url-input');
+const btnSpotPaste = document.getElementById('btn-spot-paste');
+const btnSpotClearInput = document.getElementById('btn-spot-clear-input');
+const btnSpotAdd = document.getElementById('btn-spot-add');
+const spotUrlErrorEl = document.getElementById('spot-url-error');
+const spotQueueEl = document.getElementById('spot-queue');
+const spotEmptyState = document.getElementById('spot-empty-state');
+const btnSpotStartAll = document.getElementById('btn-spot-start-all');
+const btnSpotClearDone = document.getElementById('btn-spot-clear-done');
+
 const optionsController = createOptionsController({
   optionsVisibilityStorageKey: OPTIONS_VISIBILITY_STORAGE_KEY,
   urlInput,
@@ -319,6 +337,7 @@ const viewSwitcher = createViewSwitcher({
   onDownloadsView: () => renderDownloadsManager(),
   onSettingsView: () => void loadSettingsForm(),
   onToolsView: () => syncToolsEmptyState(),
+  onSpotView: () => syncSpotEmptyState(),
 });
 const switchView = viewSwitcher.switchView;
 viewSwitcher.bindSidebarNavigation();
@@ -1722,12 +1741,391 @@ window.addEventListener('beforeunload', () => {
   clearAllRateLimitRetries();
 });
 
+function createSpotDownloadCard(job) {
+  if (spotEmptyState) spotEmptyState.hidden = true;
+
+  const card = createNode('div', `download-card ${job.status}`);
+  card.id = `spot-card-${job.id}`;
+  card.dataset.prevStatus = job.status;
+
+  const body = createNode('div', 'card-body');
+  const header = createNode('div', 'card-header');
+  const titleGroup = createNode('div', 'card-title-group');
+  const titleEl = createNode('div', 'card-title', job.title || job.url);
+  titleEl.title = job.title || '';
+  
+  const siteIconWrap = createNode('span', 'card-site-icon');
+  siteIconWrap.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16" style="color: #1DB954;"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424c-.18.295-.563.387-.857.207-2.377-1.454-5.37-1.785-8.893-.983-.336.075-.67-.138-.746-.474-.075-.335.138-.67.474-.746 3.854-.88 7.15-.506 9.81 1.127.295.18.387.563.207.857zm1.225-2.72c-.226.367-.707.487-1.074.26-2.72-1.672-6.87-2.157-10.08-1.182-.413.125-.85-.107-.975-.52-.125-.413.107-.85.52-.975 3.66-1.11 8.224-.573 11.35 1.348.366.226.486.707.26 1.074zm.106-2.833C14.384 8.71 8.163 8.5 4.545 9.597c-.557.17-1.14-.145-1.31-.702-.17-.557.145-1.14.702-1.31 4.17-1.266 11.04-1.024 15.15 1.417.5.297.666.942.368 1.442-.298.5-.943.666-1.442.368z"/></svg>`;
+
+  const badge = createNode('span', `badge badge-${job.status}`, statusLabel(job.status));
+  titleGroup.appendChild(titleEl);
+  titleGroup.appendChild(siteIconWrap);
+  header.appendChild(titleGroup);
+  header.appendChild(badge);
+
+  const meta = createNode('div', 'card-meta');
+  const formatSpan = createNode('span', '', 'MP3');
+  const errorEl = createNode('span', 'card-error', '');
+  errorEl.hidden = true;
+  meta.appendChild(formatSpan);
+  meta.appendChild(errorEl);
+
+  body.appendChild(header);
+  body.appendChild(meta);
+
+  const progressWrap = createNode('div', 'card-progress-wrap');
+  const percent = normalizedPercent(job.percent);
+  const progressPercent = createNode('span', 'card-progress-percent', `${percent}%`);
+  const progressTrack = createNode('div', 'progress-track');
+  const progressFill = createNode('div', 'progress-fill');
+  progressFill.style.width = `${percent}%`;
+  progressWrap.appendChild(progressPercent);
+  progressTrack.appendChild(progressFill);
+  progressWrap.appendChild(progressTrack);
+
+  const actions = createNode('div', 'card-actions');
+  const cancelBtn = createNode('button', 'btn-secondary', 'Cancel');
+  const retryBtn = createNode('button', 'btn-secondary', 'Retry');
+  const deleteBtn = createNode('button', 'btn-secondary', 'Delete');
+  cancelBtn.type = 'button';
+  retryBtn.type = 'button';
+  deleteBtn.type = 'button';
+  cancelBtn.onclick = () => onSpotCancel(job.id);
+  retryBtn.onclick = () => onSpotRetry(job.id);
+  deleteBtn.onclick = () => deleteSpotJob(job.id);
+  actions.appendChild(cancelBtn);
+  actions.appendChild(retryBtn);
+  actions.appendChild(deleteBtn);
+
+  card.appendChild(body);
+  card.appendChild(progressWrap);
+  card.appendChild(actions);
+
+  if (spotQueueEl) spotQueueEl.appendChild(card);
+
+  spotCardRefs.set(job.id, {
+    card,
+    titleEl,
+    badge,
+    progressPercent,
+    progressFill,
+    actions,
+    cancelBtn,
+    retryBtn,
+    deleteBtn,
+    errorEl
+  });
+
+  refreshSpotCard(job);
+}
+
+function refreshSpotCard(job) {
+  const refs = spotCardRefs.get(job.id);
+  if (!refs) return;
+
+  const percent = normalizedPercent(job.percent);
+  const prevStatus = refs.card.dataset.prevStatus || '';
+  refs.card.dataset.prevStatus = job.status;
+
+  refs.card.className = `download-card ${job.status}`;
+  refs.badge.className = `badge badge-${job.status}`;
+  refs.badge.textContent = statusLabel(job.status);
+  refs.titleEl.textContent = job.title || job.url;
+  refs.titleEl.title = job.title || '';
+  
+  const percentLabel = job.status === 'completed' ? '100%' : (job.status === 'downloading' ? `${percent}%` : '');
+  refs.progressPercent.textContent = percentLabel;
+  refs.progressPercent.style.visibility = percentLabel ? 'visible' : 'hidden';
+  refs.progressFill.style.width = `${percent}%`;
+  refs.progressFill.classList.toggle('completed', job.status === 'completed' && percent >= 100);
+
+  const canCancel = job.status === 'queued' || job.status === 'downloading';
+  const canRetry = job.status === 'failed' || job.status === 'canceled';
+  const canDelete = job.status === 'canceled';
+  refs.actions.hidden = !(canCancel || canRetry || canDelete);
+  refs.cancelBtn.hidden = !canCancel;
+  refs.retryBtn.hidden = !canRetry;
+  refs.deleteBtn.hidden = !canDelete;
+
+  if (job.error) {
+    refs.errorEl.textContent = job.error;
+    refs.errorEl.hidden = false;
+  } else {
+    refs.errorEl.textContent = '';
+    refs.errorEl.hidden = true;
+  }
+
+  if (job.status === 'completed' && prevStatus !== 'completed') {
+    showToast('Task Completed', 'success');
+  }
+}
+
+function updateSpotJob(id, changes) {
+  const job = spotQueue.find((item) => item.id === id);
+  if (!job) return;
+
+  Object.assign(job, changes);
+  refreshSpotCard(job);
+  saveSpotState();
+}
+
+function saveSpotState() {
+  const state = spotQueue.map((job) => ({
+    id: job.id,
+    url: job.url,
+    status: job.status,
+    percent: normalizedPercent(job.percent),
+    title: job.title || '',
+    error: job.error || '',
+    outputFolder: job.outputFolder,
+    outputFilePath: job.outputFilePath || ''
+  }));
+  localStorage.setItem(SPOT_STATE_STORAGE_KEY, JSON.stringify(state));
+}
+
+function restoreSpotState() {
+  const raw = localStorage.getItem(SPOT_STATE_STORAGE_KEY);
+  if (!raw) return;
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return;
+
+    parsed.forEach((item) => {
+      const job = {
+        id: item.id,
+        url: item.url,
+        status: item.status === 'downloading' ? 'queued' : item.status,
+        percent: item.status === 'downloading' ? 0 : normalizedPercent(item.percent),
+        title: item.title || '',
+        error: item.status === 'downloading' ? 'Interrupted. Start again to continue.' : (item.error || ''),
+        outputFolder: item.outputFolder || downloadFolder,
+        outputFilePath: item.outputFilePath || ''
+      };
+
+      spotQueue.push(job);
+      if (job.id > spotIdCounter) spotIdCounter = job.id;
+      createSpotDownloadCard(job);
+    });
+    syncSpotEmptyState();
+  } catch (err) {
+    console.error('[restore-spot-state]', err);
+    localStorage.removeItem(SPOT_STATE_STORAGE_KEY);
+  }
+}
+
+function scheduleSpotDownloads() {
+  while (activeSpotDownloads < MAX_CONCURRENT_SPOT_DOWNLOADS) {
+    const nextJob = spotQueue.find((job) => job.status === 'queued');
+    if (!nextJob) break;
+    void runSpotDownload(nextJob);
+  }
+}
+
+async function runSpotDownload(job) {
+  if (job.status !== 'queued') return;
+  activeSpotDownloads += 1;
+  spotCancelRequested.delete(job.id);
+
+  updateSpotJob(job.id, { status: 'downloading', error: '' });
+  try {
+    await window.electronAPI.startSpotifyDownload({
+      url: job.url,
+      outputFolder: job.outputFolder || downloadFolder,
+      downloadId: job.id
+    });
+  } catch (error) {
+    if (!spotCancelRequested.has(job.id)) {
+      updateSpotJob(job.id, {
+        status: 'failed',
+        error: error.message || 'Download failed.'
+      });
+    }
+  } finally {
+    activeSpotDownloads = Math.max(0, activeSpotDownloads - 1);
+    saveSpotState();
+    scheduleSpotDownloads();
+  }
+}
+
+window.electronAPI.onSpotifyDownloadProgress((data) => {
+  const updates = {
+    percent: data.percent ?? 0,
+    status: data.status,
+  };
+  if (data.title) updates.title = data.title;
+  if (data.error) updates.error = data.error;
+  if (data.outputFilePath) updates.outputFilePath = data.outputFilePath;
+  updateSpotJob(data.downloadId, updates);
+});
+
+async function onSpotCancel(jobId) {
+  const job = spotQueue.find((item) => item.id === jobId);
+  if (!job) return;
+
+  if (job.status === 'queued') {
+    updateSpotJob(jobId, {
+      status: 'canceled',
+      percent: 0,
+      error: 'Download canceled by user.'
+    });
+    return;
+  }
+
+  if (job.status === 'downloading') {
+    spotCancelRequested.add(jobId);
+    updateSpotJob(jobId, { error: 'Cancel requested...' });
+    const result = await window.electronAPI.cancelSpotifyDownload(jobId);
+    if (!result || !result.success) {
+      spotCancelRequested.delete(jobId);
+      updateSpotJob(jobId, { error: 'Failed to cancel download.' });
+    }
+  }
+}
+
+function onSpotRetry(jobId) {
+  const job = spotQueue.find((item) => item.id === jobId);
+  if (!job) return;
+  spotCancelRequested.delete(job.id);
+  updateSpotJob(jobId, {
+    status: 'queued',
+    percent: 0,
+    error: ''
+  });
+  scheduleSpotDownloads();
+}
+
+function deleteSpotJob(jobId) {
+  spotQueue = spotQueue.filter((job) => job.id !== jobId);
+  const ref = spotCardRefs.get(jobId);
+  if (ref && ref.card) ref.card.remove();
+  spotCardRefs.delete(jobId);
+  syncSpotEmptyState();
+  saveSpotState();
+}
+
+function syncSpotEmptyState() {
+  if (spotEmptyState) spotEmptyState.hidden = spotQueue.length !== 0;
+}
+
+function initSpotTab() {
+  if (!spotUrlInput) return;
+
+  btnSpotPaste.onclick = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      const trimmed = (text || '').trim();
+      if (trimmed) {
+        spotUrlInput.value = trimmed;
+        btnSpotClearInput.hidden = false;
+        clearSpotUrlError();
+      }
+    } catch (_) {
+      showToast('Could not read clipboard', 'error');
+    }
+  };
+
+  spotUrlInput.addEventListener('input', () => {
+    btnSpotClearInput.hidden = !spotUrlInput.value.trim();
+    clearSpotUrlError();
+  });
+
+  btnSpotClearInput.onclick = () => {
+    spotUrlInput.value = '';
+    btnSpotClearInput.hidden = true;
+    clearSpotUrlError();
+    spotUrlInput.focus();
+  };
+
+  btnSpotAdd.onclick = () => {
+    clearSpotUrlError();
+    if (!downloadFolder) {
+      setSpotUrlError('Please select a download folder first in Home/Settings.');
+      return;
+    }
+
+    const url = spotUrlInput.value.trim();
+    if (!url) {
+      setSpotUrlError('Please paste a Spotify track URL.');
+      return;
+    }
+
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        throw new Error();
+      }
+    } catch {
+      setSpotUrlError('Invalid URL. Only HTTP/HTTPS URLs are allowed.');
+      return;
+    }
+
+    const job = {
+      id: ++spotIdCounter,
+      url,
+      status: 'queued',
+      percent: 0,
+      title: 'Spotify Track',
+      error: '',
+      outputFolder: downloadFolder,
+      outputFilePath: ''
+    };
+
+    spotQueue.unshift(job);
+    createSpotDownloadCard(job);
+    syncSpotEmptyState();
+    saveSpotState();
+
+    spotUrlInput.value = '';
+    btnSpotClearInput.hidden = true;
+  };
+
+  btnSpotStartAll.onclick = () => {
+    const queued = spotQueue.filter((job) => job.status === 'queued');
+    if (queued.length === 0) {
+      alert('No queued downloads to start.');
+      return;
+    }
+    scheduleSpotDownloads();
+  };
+
+  btnSpotClearDone.onclick = () => {
+    spotQueue = spotQueue.filter((job) => {
+      const isDone = job.status === 'completed' || job.status === 'failed' || job.status === 'canceled';
+      if (isDone) {
+        const ref = spotCardRefs.get(job.id);
+        if (ref && ref.card) ref.card.remove();
+        spotCardRefs.delete(job.id);
+      }
+      return !isDone;
+    });
+    syncSpotEmptyState();
+    saveSpotState();
+  };
+}
+
+function setSpotUrlError(msg) {
+  if (spotUrlErrorEl) {
+    spotUrlErrorEl.textContent = msg;
+    spotUrlErrorEl.hidden = false;
+  }
+}
+
+function clearSpotUrlError() {
+  if (spotUrlErrorEl) {
+    spotUrlErrorEl.textContent = '';
+    spotUrlErrorEl.hidden = true;
+  }
+}
+
 // Show app immediately, load state in background
 document.documentElement.setAttribute('data-app-ready', 'true');
 
 void (async () => {
   try {
     await restoreState();
+    initSpotTab();
+    restoreSpotState();
   } catch (err) {
     console.error('[restore-state]', err);
   } finally {
@@ -1735,6 +2133,7 @@ void (async () => {
     initInfoTipPopovers();
     initSubtitleSupportHint();
     saveState();
+    saveSpotState();
   }
 })();
 

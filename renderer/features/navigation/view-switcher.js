@@ -1,5 +1,5 @@
-export function createViewSwitcher({ onDownloadsView, onSettingsView, onToolsView }) {
-  const viewIds = ["view-home", "view-downloads", "view-settings", "view-tools"];
+export function createViewSwitcher({ onDownloadsView, onSettingsView, onToolsView, onSpotView }) {
+  const viewIds = ["view-home", "view-downloads", "view-settings", "view-tools", "view-spot"];
 
   const switchView = (viewId) => {
     viewIds.forEach((id) => {
@@ -23,6 +23,7 @@ export function createViewSwitcher({ onDownloadsView, onSettingsView, onToolsVie
     if (viewId === "view-downloads" && typeof onDownloadsView === "function") onDownloadsView();
     if (viewId === "view-settings" && typeof onSettingsView === "function") onSettingsView();
     if (viewId === "view-tools" && typeof onToolsView === "function") onToolsView();
+    if (viewId === "view-spot" && typeof onSpotView === "function") onSpotView();
   };
 
   const bindSidebarNavigation = () => {

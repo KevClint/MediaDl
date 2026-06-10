@@ -6,6 +6,7 @@ import LegacyDownloadsView from "./components/legacy/views/LegacyDownloadsView";
 import LegacyHomeView from "./components/legacy/views/LegacyHomeView";
 import LegacySettingsView from "./components/legacy/views/LegacySettingsView";
 import LegacyToolsView from "./components/legacy/views/LegacyToolsView";
+import LegacySpotView from "./components/legacy/views/LegacySpotView";
 
 function App() {
   useEffect(() => {
@@ -31,6 +32,7 @@ function App() {
         <LegacyDownloadsView />
         <LegacySettingsView />
         <LegacyToolsView />
+        <LegacySpotView />
       </LegacyAppLayout>
       <LegacyOverlays />
     </>
