@@ -275,7 +275,7 @@ body {
 }
 
 .sidebar-about {
-  margin-top: 0;
+  margin-top: auto;
   width: 100%;
   padding: 10px 8px 12px;
   border-top: 1px solid var(--color-border);

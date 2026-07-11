@@ -26,6 +26,14 @@ const sidebarInnerHtml = `<button type="button" class="sidebar-nav-item active" 
         </span>
         <span class="sidebar-nav-label">Media Tools</span>
       </button>
+      <button type="button" class="sidebar-nav-item" data-view="spot" aria-label="Spotify downloader" title="Spotify downloader">
+        <span class="sidebar-nav-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.980-8.159-2.58-12.039-1.541-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.079 9.6 14.399 10.2 17.98 12.42c.361.21.599.659.301 1.08zm.140-3.438c-3.899-2.319-10.259-2.52-13.979-1.38-.601.179-1.2-.041-1.38-.62-.18-.601.041-1.2.62-1.381 4.100-1.319 11.020-1.077 15.679 1.598.56.343.799 1.02.456 1.58-.343.56-1.019.799-1.576.457z" />
+          </svg>
+        </span>
+        <span class="sidebar-nav-label">Spot</span>
+      </button>
       <button type="button" class="sidebar-nav-item" data-view="settings" aria-label="Settings" title="Settings">
         <span class="sidebar-nav-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -34,14 +42,6 @@ const sidebarInnerHtml = `<button type="button" class="sidebar-nav-item active" 
           </svg>
         </span>
         <span class="sidebar-nav-label">Settings</span>
-      </button>
-      <button type="button" class="sidebar-nav-item" data-view="spot" aria-label="Spotify downloader" title="Spotify downloader">
-        <span class="sidebar-nav-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.980-8.159-2.58-12.039-1.541-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.079 9.6 14.399 10.2 17.98 12.42c.361.21.599.659.301 1.08zm.140-3.438c-3.899-2.319-10.259-2.52-13.979-1.38-.601.179-1.2-.041-1.38-.62-.18-.601.041-1.2.62-1.381 4.100-1.319 11.020-1.077 15.679 1.598.56.343.799 1.02.456 1.58-.343.56-1.019.799-1.576.457z" />
-          </svg>
-        </span>
-        <span class="sidebar-nav-label">Spot</span>
       </button>
       <div class="sidebar-divider"></div>
       <div class="sidebar-about">

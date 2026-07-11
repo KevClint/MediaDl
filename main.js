@@ -1694,12 +1694,12 @@ ipcMain.handle('show-item-in-folder', async (event, filePath) => {
 });
 
 function getSptScriptPath() {
-  const devPath = path.join(__dirname, 'spt.py');
+  const devPath = path.join(__dirname, 'tools', 'spt.py');
   if (fs.existsSync(devPath)) return devPath;
-  const prodPath = path.join(process.resourcesPath, 'spt.py');
-  if (fs.existsSync(prodPath)) return prodPath;
-  const unpackedPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'spt.py');
-  return unpackedPath;
+  const unpackedPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'tools', 'spt.py');
+  if (fs.existsSync(unpackedPath)) return unpackedPath;
+  const prodPath = path.join(process.resourcesPath, 'tools', 'spt.py');
+  return prodPath;
 }
 
 ipcMain.handle('start-spotify-download', async (event, { url, outputFolder, downloadId }) => {

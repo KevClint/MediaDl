@@ -61,8 +61,8 @@ async function runTestCase(testCase, index) {
     const startTime = Date.now();
 
     if (testCase.type === 'yt-dlp') {
-      const ytdlp = path.join(__dirname, 'tools', 'yt-dlp.exe');
-      const ffmpegDir = path.join(__dirname, 'tools');
+      const ytdlp = path.join(__dirname, '..', '..', 'tools', 'yt-dlp.exe');
+      const ffmpegDir = path.join(__dirname, '..', '..', 'tools');
       
       const args = [
         '--ffmpeg-location', ffmpegDir,
@@ -75,7 +75,7 @@ async function runTestCase(testCase, index) {
         env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
       });
     } else {
-      const sptScript = path.join(__dirname, 'spt.py');
+      const sptScript = path.join(__dirname, '..', '..', 'tools', 'spt.py');
       proc = spawn('uv', ['run', sptScript, testCase.url || '', outputDir], {
         env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
       });
